@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-game/data/map.proto";
+
+message MapUpdateResponse {
+  MapState map_state = 1;
+}

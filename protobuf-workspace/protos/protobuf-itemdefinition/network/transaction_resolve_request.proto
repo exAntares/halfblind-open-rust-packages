@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf_itemdefinition;
+
+import "protobuf-itemdefinition/data/inventory.proto";
+
+message TransactionResolveRequest {
+    string id = 1;
+}
+
+message TransactionResolveResponse {
+  repeated InventoryItem inventory = 1; // updated inventory
+}

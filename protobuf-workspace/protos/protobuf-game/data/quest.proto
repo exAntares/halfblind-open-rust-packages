@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+message QuestInstance {
+	uint64 definition_id = 1;
+	QuestStatus	status = 2;
+	QuestProgress progress = 3;
+}
+
+message QuestProgress {
+	repeated uint64 mob_definition_id = 1;
+	repeated uint32 kill_amount = 2;
+}
+
+enum QuestStatus {
+	Unavailable = 0;
+	Available = 1;
+	InProgress = 2;
+	Claimed = 3;
+}

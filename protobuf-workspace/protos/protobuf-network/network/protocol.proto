@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package protobuf_network;
+
+import "protobuf-network/network/error_codes.proto";
+import "google/protobuf/any.proto";
+
+message ProtoRequest {
+  uint64 message_id = 1;
+  google.protobuf.Any any_payload = 2;
+  uint64 message_timestamp = 3;
+}
+
+message ProtoResponse {
+  uint64 message_id = 1;
+  google.protobuf.Any any_payload = 2;
+  uint64 server_now = 3;
+  ErrorCode error = 4;  
+}

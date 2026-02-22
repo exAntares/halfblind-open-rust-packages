@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package protobuf_network;
+
+// Register a new user with a unique ID
+message RegisterRequest {
+  string player_uuid = 1;
+}
+
+// Server responds with a token if registration succeeds
+message RegisterResponse {
+  string player_uuid = 1;
+  string token = 2;
+}

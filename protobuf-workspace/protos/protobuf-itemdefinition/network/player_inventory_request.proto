@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf_itemdefinition;
+
+import "protobuf-itemdefinition/data/inventory.proto";
+
+// ---------- NETWORK ----------
+message PlayerInventoryRequest {
+}
+
+message PlayerInventoryResponse {
+  repeated InventoryItem inventory = 1;
+}

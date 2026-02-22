@@ -1,0 +1,13 @@
+[package]
+name = "halfblind-inventory-service"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+protobuf-itemdefinition = { path="../protobuf-itemdefinition" }
+halfblind-database-service = { path="../halfblind-database-service" }
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1.17.0", features = ["v4"] }
+dashmap = "6.1.0"
+sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio", "tls-native-tls", "uuid", "chrono"] }
+async-trait = "0.1.77"

@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-itemdefinition/data/item_definition.proto";
+import "google/protobuf/any.proto";
+
+message BTNode {
+  google.protobuf.Any any_node = 1;
+}
+
+/// COMPOSITES
+message BTNodeSequence {
+  repeated BTNode children = 1;
+}
+
+message BTNodeSelector {
+  repeated BTNode children = 1;
+}
+
+// DECORATORS
+
+enum BTRepeatMode {
+  Once = 0;
+  Forever = 1;
+  x_times = 2;
+}
+
+message BTNodeRepeat {
+  BTNode child = 1;
+  BTRepeatMode repeat = 2;
+  int32 count_times = 3; // Only used when repeat mode is x_times
+}
+
+message BTNodeWait {
+  float duration_milliseconds = 1;
+}
+
+// LEAFS ACTIONS
+message BTNodeCalculateRandomPosition {
+}
+
+message BTNodeMoveToRandomLocation {
+}
+
+message BTNodeSpawnSkillOnTarget {
+  protobuf_itemdefinition.ItemDefinitionRef skill_definition = 1;
+  uint64 override_damage = 2;
+}
+
+// LEAFS CONDITIONS
+
+message BTNodeIsCharacterInRange {
+  float range = 1;
+}

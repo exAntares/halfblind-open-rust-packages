@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "protobuf-itemdefinition/data/inventory.proto";
+
+package protobuf_itemdefinition;
+
+message CheatAddInventoryItemRequest {
+  string player_uuid = 1;
+  string character_uuid = 2;
+  repeated InventoryItem item_def = 3;
+}
+
+message CheatAddInventoryItemResponse {
+  string player_uuid = 1;
+  string character_uuid = 2;
+  repeated InventoryItem inventory = 3;
+}

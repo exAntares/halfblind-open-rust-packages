@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf_itemdefinition;
+
+import "protobuf-itemdefinition/data/transaction.proto";
+
+message TransactionInstancesRequest {
+}
+
+message TransactionInstancesResponse {
+  repeated TransactionInstance transactions = 1;
+}
+

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-game/data/characters.proto";
+
+message CharactersQueryRequest {
+}
+
+message CharactersQueryResponse {
+	repeated CharacterInstance owned_characters = 1;
+}

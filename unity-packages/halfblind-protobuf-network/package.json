@@ -1,0 +1,19 @@
+{
+  "name": "com.halfblind.protobufnetwork",
+  "displayName": "HalfBlind Protobuf for Network Communication",
+  "version": "1.0.0",
+  "unity": "2018.1",
+  "description": "Has the basic definitions for a client server communication",
+  "keywords": [
+    "Network"
+  ],
+  "category": "Scripts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/@exAntares"
+  },
+  "author": {
+    "name": "HalfBlind",
+    "email": "",
+    "url": ""
+  }
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+message MapJoinRequest {
+  uint64 map_uuid = 1;
+  string character_uuid = 2;
+}
+
+message MapJoinResponse {
+  uint64 map_uuid = 1;
+  string character_uuid = 2;
+}

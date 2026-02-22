@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package protobuf_itemdefinition;
+
+import "google/protobuf/any.proto";
+
+message ItemDefinition {
+    uint64 id = 1;          // unique asset id
+    repeated google.protobuf.Any any_components = 2;
+}
+
+// This way we can create custom editors for this and author data easier
+message ItemDefinitionRef {
+    uint64 id = 1;
+}
+
+message ItemDefinitionRefAmount {
+    ItemDefinitionRef itemRef = 1;
+    uint64 amount = 2;
+}
+

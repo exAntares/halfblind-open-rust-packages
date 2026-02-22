@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+// Maybe we can have elemental damage later
+enum DamageType {
+  Damage = 0;
+  Heal = 1;
+}

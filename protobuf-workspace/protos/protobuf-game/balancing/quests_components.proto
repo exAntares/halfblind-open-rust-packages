@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+// Quests abuse the inventory items
+// A quest exists in the inventory as an id and its value is its state
+// Quest value 0 means is not available for the player
+// 1 = Available, means quest can be started
+// 2 = InProgress, means quest is started and when finished can be collected
+// 3 = Collected, means the quest has been collected and now is done
+message QuestDefinitionComponent {
+}
+

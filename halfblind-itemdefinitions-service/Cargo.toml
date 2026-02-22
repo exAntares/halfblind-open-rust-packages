@@ -1,0 +1,10 @@
+[package]
+name = "halfblind-itemdefinitions-service"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+protobuf-itemdefinition = { path = "../protobuf-itemdefinition" }
+prost = "0.14.1"
+once_cell = "1.21.3"
+uuid = { version = "1.17.0", features = ["v4"] }

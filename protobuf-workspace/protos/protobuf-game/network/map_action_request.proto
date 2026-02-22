@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-game/data/characters.proto";
+import "protobuf-game/data/position.proto";
+import "protobuf-itemdefinition/data/inventory.proto";
+
+message MapActionRequest {
+  string character_uuid = 1;
+  oneof MapAction {
+    MoveTo move_to = 2;
+    UseSkill usable_skill = 3;
+    PickUpItem pick_up_item = 4;
+    UseTeleport use_teleport = 5;
+    UseAbilityPoint use_ability_point = 6;
+  }
+}
+
+message MapActionResponse {
+}
+
+// Map Actions
+
+message MoveTo {
+  repeated Position target_positions = 1;
+}
+
+message UseSkill { 
+  uint64 skill_definition_id = 1;
+  Position target_pos = 2;
+  Position target_direction = 3;
+  repeated string targets_uuid = 4; // When the skill directly affects X entities
+}
+
+message UseAbilityPoint { 
+  CharacterStat stat = 1;
+  uint32 amount = 2;
+}
+
+message PickUpItem {
+  repeated string item_instance_id = 1;
+}
+
+message UseTeleport {
+  uint32 teleport_index = 1;
+}
+
+// Allows dropping items. Only items which are not equipped and not invisible can be dropped
+message DropItem {
+  repeated protobuf_itemdefinition.InventoryItem item = 1;
+}

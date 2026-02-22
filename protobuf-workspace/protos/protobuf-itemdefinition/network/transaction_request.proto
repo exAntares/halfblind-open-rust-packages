@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package protobuf_itemdefinition;
+
+import "protobuf-itemdefinition/data/inventory.proto";
+import "protobuf-itemdefinition/data/transaction.proto";
+
+message TransactionRequest {
+    uint64 transaction_id = 1;
+    string inventory_source_uuid = 2; // using player uuid uses player inventory, using character uuid uses character inventory
+}
+
+message TransactionResponse {
+  repeated TransactionInstance transaction_instance_id = 1; // If the transaction takes longer than 0 seconds we get the transaction instance ids
+  repeated InventoryItem inventory = 2; // updated inventory
+  repeated InventoryItem rewarded = 3; // what you got instantly
+}

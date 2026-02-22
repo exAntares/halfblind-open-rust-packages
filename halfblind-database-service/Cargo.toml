@@ -1,0 +1,8 @@
+[package]
+name = "halfblind-database-service"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = "0.1.77"
+sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio", "tls-native-tls", "uuid", "chrono"] }

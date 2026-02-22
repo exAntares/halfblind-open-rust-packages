@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-game/data/map.proto";
+import "protobuf-game/data/map_loot.proto";
+
+message MapComponent {
+  repeated Teleporter teleporter = 1;
+  MeshData map_data = 2; // Collision data
+  repeated SpawnPoint spawn_points = 3;
+  uint32 max_enemies = 4;
+  int32 map_index = 5; // Used on the client side to map which scene to load
+}
+
+// When present, the given map is allowed to perform combat actions (use skill), but not the following:
+// equip/unequip, start/claim quest, use ability points
+// Otherwise, the opposite set of actions is allowed
+message MapIsCombatEnabledComponent {}
+
+// Must only be present on one map, this one will be the first map for every new player
+message MapIsInitialMapComponent {}
+
+message MobComponent {
+  uint64 max_hp = 1;
+  uint32 movement_speed = 2;
+  uint64 xp = 3;
+  LootTable loot_table = 4;
+}

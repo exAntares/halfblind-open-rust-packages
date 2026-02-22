@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+enum EquipmentSlot {
+	Helmet = 0;
+	HandMain = 1;
+	HandSecondary = 2;
+	Armor = 3;
+	Pants = 4;
+	Gloves = 5;
+	Boots = 6;
+	Wings = 7;
+	Familiar = 8;
+	// Invisible slots
+	Amulet = 9;
+	Ring = 10;
+}

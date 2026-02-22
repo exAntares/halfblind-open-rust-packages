@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package protobuf_itemdefinition;
+
+// This is an instance of an item
+message InventoryItem {
+  string item_instance_id = 1; // It may be the ID from the database or the EntityPosition.ItemInstance.instance_id
+  uint64 item_definition_id = 2;
+  uint64 amount = 3; // Amount is only used when the item is stackable
+  bool is_equipped = 4;
+  repeated InventoryItemAttribute attributes = 5;
+}
+
+message InventoryItemAttribute {
+  ItemAttributeDefinition attr_definition = 1;
+  float attr_value = 2;
+}
+
+/// Here are all the attributes that items may contain.
+enum ItemAttributeDefinition {
+  IncreaseVitality = 0;
+  IncreaseIntelligence = 1;
+  IncreaseStrength = 2;
+  IncreaseAgility = 3;
+  // Skill damage should take into account the dps of a weapon
+  IncreaseWeaponDamage = 4;
+  // Skill damage should take into account the dps of a weapon
+  IncreaseWeaponDamagePercentage = 5;
+  // Attack/Skill (including healing)
+  IncreaseCriticalChancePercentage = 6;
+  IncreaseCriticalDamagePercentage = 7;
+  IncreaseMovementSpeedPercentage = 8;
+  // Chance for better drops on loot table
+  IncreaseLuckPercentage = 9;
+}

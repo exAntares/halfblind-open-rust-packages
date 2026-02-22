@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package protobuf_network;
+
+// Login using ID and token
+message LoginRequest {
+  string player_uuid = 1;
+  string token = 2;
+}
+
+// Server confirms success
+message LoginResponse {
+  string player_uuid = 1;
+}

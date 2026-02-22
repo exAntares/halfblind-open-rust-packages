@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-itemdefinition/data/inventory.proto";
+import "protobuf-game/data/skills.proto";
+
+enum CharacterStat {
+  AGI = 0;
+  INT = 1;
+  STR = 2;
+  VIT = 3;
+}
+
+message CharacterInstance {
+	string player_owner_uuid = 1;
+	string character_uuid = 2;
+	uint64 character_definition_id = 3;
+	uint32 current_max_hp = 4;
+	int32 current_hp = 5;
+	repeated protobuf_itemdefinition.InventoryItem visible_inventory = 6;
+	string character_name = 7;
+	CharacterPrivateInstance private_instance = 8; // The private data, should only be present for your own player, but we can send it all for now
+	repeated StatusInstance statuses = 9; // Buffs and debuffs
+}
+
+message CharacterPrivateInstance {
+	repeated protobuf_itemdefinition.InventoryItem full_inventory = 2;
+	uint32 agi_spent = 3;
+	uint32 int_spent = 4;
+	uint32 str_spent = 5;
+	uint32 vit_spent = 6;
+}

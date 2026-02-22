@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package protobuf_network;
+
+enum ErrorCode {
+  OK = 0;
+  UNKNOWN_ERROR = 1;
+  NOT_IMPLEMENTED = 2;
+  INVALID_REQUEST = 3;
+  TIMEOUT = 4;
+  NOT_FOUND = 5;
+  PERMISSION_DENIED = 6;
+  USER_ALREADY_EXISTS = 7;
+  INVALID_TOKEN = 8;
+  AUTHENTICATION_FAILED = 9;
+}

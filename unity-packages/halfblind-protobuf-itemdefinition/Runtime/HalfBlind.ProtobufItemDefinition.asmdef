@@ -1,0 +1,17 @@
+{
+    "name": "HalfBlind.ProtobufItemDefinition",
+    "rootNamespace": "",
+    "references": [
+        "Google.Protobuf",
+        "HalfBlind.Protobuf"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

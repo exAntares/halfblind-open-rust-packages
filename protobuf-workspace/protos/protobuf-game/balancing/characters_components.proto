@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+import "protobuf-itemdefinition/data/item_definition.proto";
+
+package protobuf_game;
+
+/// COMPONENTS
+
+message CharacterDefinitionComponent {
+ 	int32 baseHp = 1;
+ 	int32 baseStrength = 2;
+ 	int32 baseAgility = 3;
+ 	int32 baseIntelligence = 4;
+ 	int32 baseMovementSpeed = 5;
+  repeated protobuf_itemdefinition.ItemDefinitionRefAmount initialInventory = 6;
+}
+
+message IsCharacterXpComponent {}
+
+message IsCharacterLevelComponent {}
+
+message IsCurrentCharacterSlotCountComponent {}
+
+message LevelRequiredExperienceComponent {
+	repeated uint64 RequiredExpForLevel = 1;
+}
+
+message AbilityPointsPerLevelSingletonComponent {
+	uint32 pointsPerLevel = 1;
+}
+
+// The maximum capacity a character (or player) can have in their inventory. Notice this only affects items which do not have the component InventoryHiddenItemComponent
+message MaximumVisibleInventoryCapacitySingletonComponent {
+  uint32 capacity = 1;
+}
+
+// The amount of extra gold it would cost to buy from NPCs for inventory items. A value of 1.5 means you'd have to pay a 150% of the selling value.
+message InventoryItemBaseBuyFromNpcValueSingletonComponent {
+  float percentageValue = 1;
+}
+
+// Values for initializing a new character
+message InventoryInitialValueCharacterComponent { 
+    int64 value = 1; 
+}

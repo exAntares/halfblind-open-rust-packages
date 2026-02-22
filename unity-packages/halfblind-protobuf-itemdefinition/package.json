@@ -1,0 +1,19 @@
+{
+  "name": "com.halfblind.protobufitemdefinition",
+  "displayName": "HalfBlind Protobuf for Item definitions",
+  "version": "1.0.0",
+  "unity": "2018.1",
+  "description": "Has the basic item definitions to start generating balancing",
+  "keywords": [
+    "GameDesign"
+  ],
+  "category": "Scripts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/@exAntares"
+  },
+  "author": {
+    "name": "HalfBlind",
+    "email": "",
+    "url": ""
+  }
+}

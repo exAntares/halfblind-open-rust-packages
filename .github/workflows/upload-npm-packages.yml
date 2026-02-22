@@ -1,0 +1,54 @@
+name: Upload NPM Packages
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+    secrets:
+      NPMRC_FILE_CONTENTS:
+        required: true
+  
+jobs:
+  upload-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 12
+      - name: npm publish
+        run: |
+          cd unity-packages/
+          for d in */ ; do
+            echo "$d"
+            cd $d
+            # NPMRC_FILE_CONTENTS EXAMPLE
+            # registry=https://npm.pkg.github.com/@exAntares
+            # //npm.pkg.github.com/:_authToken={TOKEN_HERE}
+            echo "${{ secrets.NPMRC_FILE_CONTENTS }}" > .npmrc
+            REGISTRY_URL=$(cat .npmrc | grep "registry=" | sed 's/.*=//')
+            echo ${REGISTRY_URL}
+
+            sed -i "s#\"registry\"[[:space:]]*:[[:space:]]*\".*\"#\"registry\":\"${REGISTRY_URL}\"#g" package.json
+            sed -i "s#\"version\"[[:space:]]*:[[:space:]]*\".*\"#\"version\":\"${{ inputs.version }}\"#g" package.json
+
+            cat package.json
+
+            ## Get the version from package.json
+            PACKAGE_NAME="$(jq -r .name package.json | tr -d '\n' | xargs)"
+            VERSION="$(jq -r .version package.json | tr -d '\n' | xargs)"
+            echo "Package name: ${PACKAGE_NAME}, Version: ${VERSION}"
+
+            echo "🔍 Checking if ${PACKAGE_NAME}@${VERSION} exists in ${REGISTRY_URL}..."
+
+            # Check if version exists
+            if npm view "${PACKAGE_NAME}" versions --json --registry "${REGISTRY_URL}" 2>/dev/null | grep -q "\"${VERSION}\""; then
+              echo "⚠️ Version ${VERSION} already exists. Skipping publish."
+            else
+              echo "🚀 Publishing ${PACKAGE_NAME}@${VERSION} to ${REGISTRY_URL}"
+              npm publish --registry "${REGISTRY_URL}"
+            fi
+            cd ..
+          done

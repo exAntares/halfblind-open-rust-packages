@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+message StartQuestRequest {
+  string character_uuid = 1;
+  uint64 quest_definition_id = 2;
+}
+
+message StartQuestResponse {
+}

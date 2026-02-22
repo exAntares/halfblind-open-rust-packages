@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+import "protobuf-itemdefinition/data/item_definition.proto";
+
+package protobuf_game;
+
+message SkillComponent {
+	float radius_start = 1; // Spawn size of radius 
+	float radius_end = 2; // Radius size at the end of the lifetime
+	uint32 max_distance = 3; // How far away can the skill be spawned from the player
+	uint32 lifetime_millis = 4; // total duration of the skill
+	uint32 trigger_interval_millis = 5; // how often it does the damage after the initial delay
+	uint32 start_delay_millis = 6; // delays the first damage
+	uint32 cooldown_millis = 7; // the skill can't be used again until this time has passed after usage
+	float movement_speed = 8; // How fast the skill moves away from the player
+	SkillPositionCalculationMode skill_position_calculation_mode = 9;
+	SkillTickIntervalMode skill_interval_mode = 10;
+	SkillTargetMode skill_taget_mode = 11;
+	SkillAoETargetType aoe_target_type = 12; // When the skill has a range and can affect multiple enemies, who should it affect
+	protobuf_itemdefinition.ItemDefinitionRef on_hit = 13;
+}
+
+enum SkillPositionCalculationMode {
+	MousePos = 0; // The skill position will be calculated on the client based on the mouse position, constrained by max_distance
+	LookAt = 1; // The skill position will be calculated using the position of the character, look at mouse position, given a max_distance
+	SelectedTarget = 2; // The skill affects a specific target
+	CasterPosition = 3; // Whoever casted the skill goes into its current position
+}
+
+enum SkillTickIntervalMode { // How many times can it hit the same enemy
+	MultipleTimes = 0;
+	OnlyOnce = 1;
+}
+
+enum SkillTargetMode {
+	MultipleTargets = 0; // Can affect to multiple targets
+	SingleTarget = 1; // Once it affects a target it can only affecting the same target
+	Self = 2; // Target yourself, useful for heals
+}
+
+// When doing a skill with area effect who should it affects?
+enum SkillAoETargetType {
+	Enemies = 0; // Default option, skills affect enemies
+	Allies = 1; // E.G. when using a mass heal
+}
+
+message DamageOnHitComponent {
+	float base_damage = 1;
+	// Adds a percentage of stats to the base damage 1 = 100% stat applied
+	float strength_modifier = 2;
+	float agility_modifier = 3;
+	float intelligence_modifier = 4;
+}
+
+message HealOnHitComponent {
+	float base_heal = 1;
+	// Adds a percentage of stats to the base damage 1 = 100% stat applied
+	float strength_modifier = 2;
+	float agility_modifier = 3;
+	float intelligence_modifier = 4;
+}
+
+message StatusOnHitComponent {
+	uint64 lifetime_millis = 1; // total duration of the effect
+	uint32 interval_millis = 2; // how often it triggers, 0 triggers once
+	StatusType effect_type = 3; // What kind of effect
+	repeated StatModification modifications = 4; // Only if Status type is StatModifier
+}
+
+enum StatusType {
+	StatModifier = 0; // the effect modifies the stats of the target, more HP/stats/crit/regen, or less (curses)
+	// HpChanges = 1; // Damage effects over time, like poison / burn or heals over time
+}
+
+enum StatType {
+	DamageStat = 0;
+	CriticalRate = 1;
+	CriticalDamage = 2;
+	// MaxHp = 3; TODO
+}
+
+message StatModification {
+	StatType stat_type = 1;
+	int64 plain = 2; // Modifies adds or removes a static amount, E.G. MaxHP +50
+	float percentage = 3; // Modifies adds or removes a percentage amount, E.G. MaxHP +10%
+}

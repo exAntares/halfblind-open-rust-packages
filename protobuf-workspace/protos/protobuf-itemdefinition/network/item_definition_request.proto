@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf_itemdefinition;
+
+import "protobuf-itemdefinition/data/item_definition.proto";
+
+message ItemDefinitionsRequest { 
+}
+
+message ItemDefinitionsResponse {
+  repeated ItemDefinition definitions = 1;
+}

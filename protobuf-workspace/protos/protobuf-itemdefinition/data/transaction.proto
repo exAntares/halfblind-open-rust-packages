@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+import "protobuf-itemdefinition/data/item_definition.proto";
+
+package protobuf_itemdefinition;
+
+// Represents an item and its quantity
+message TransactionItem {
+    ItemDefinitionRef id_ref = 1;
+    uint64 value = 2;
+    string itemInstanceId = 3; // Used in dynamic transactions on server side to define an exact item to be consumed instead of a type
+}
+
+message TransactionReward {
+    ItemDefinitionRef id_ref = 1;
+    uint64 value = 2;
+    uint64 valueMin = 3;
+    uint64 valueMax = 4;
+    uint64 duration = 5;                       // Duration in seconds
+}
+
+message TransactionWeightedReward {
+    TransactionReward reward = 1;
+    uint32 weight = 2;
+}
+
+message TransactionLootBag {
+    repeated TransactionWeightedReward weightedRewards = 1;
+}
+
+message TransactionInstance {
+    string id = 1;
+    uint64 endtime = 2;
+    TransactionItem reward = 3;
+}
+
+message Transaction {
+    repeated TransactionItem required = 1;               // Items required to be owned (won't be deducted)
+    repeated TransactionItem required_negative = 2;      // Items required to be NOT be owned (won't be deducted)
+    repeated TransactionItem consumed = 3;               // Items consumed, removed from the user inventory
+    repeated TransactionReward rewarded = 4;             // Items produced some can be instant others over time
+    repeated TransactionLootBag rewardsRandom = 5;       // Chose 1 item from each bag
+}

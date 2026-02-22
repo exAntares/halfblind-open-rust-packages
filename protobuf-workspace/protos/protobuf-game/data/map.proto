@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-game/data/characters.proto";
+import "protobuf-game/data/damage.proto";
+import "protobuf-game/data/position.proto";
+import "protobuf-itemdefinition/data/inventory.proto";
+
+message SpawnPoint {
+  uint64 enemy_definition_id = 1;
+  Position position = 2;
+  uint64 spawn_rate_ms = 3;
+}
+
+message Teleporter {
+  uint64 connected_map_id = 1;
+  Position position = 2;
+  uint64 transaction_id = 3; // Using the door executes a transaction which could be just a required item.
+}
+
+message MeshData {
+  string name = 1;                         // Mesh name/ID
+  repeated float vertices = 2;             // Flattened [x,y,z,x,y,z,...]
+  repeated float normals = 3;              // Flattened [x,y,z,...]
+  repeated float uvs = 4;                  // Flattened [u,v,u,v,...]
+  repeated int32 indices = 5;              // Triangles [i1,i2,i3,...]
+  repeated float colors = 6;               // (Optional) flattened RGBA per vertex
+}
+
+message MobInstance {
+  uint64 definition_id = 1;
+  string instance_id = 2;
+  uint64 current_hp = 3;
+  uint64 max_hp = 4;
+}
+
+message SkillInstance {
+  uint64 definition_id = 1;
+  string instance_id = 2;
+  string owner_uuid = 3;
+	float remaining_lifetime = 4;
+}
+
+message ItemInstance {
+  uint64 definition_id = 1;
+  string instance_uuid = 2;
+  string owner_uuid = 3;
+  uint64 value = 4;
+}
+
+message EntityPosition {
+  uint64 creation_timestamp = 1;
+  Position position = 2;
+  oneof entity {
+    CharacterInstance player = 3;
+    MobInstance mob = 4;
+    SkillInstance skill = 5;
+    ItemInstance pickable_item = 6;
+    protobuf_itemdefinition.InventoryItem pickable_inventory_item = 7;
+  }
+}
+
+message DamageInstance {
+  string instance_id = 1;
+  uint64 creation_timestamp = 2;
+  Position position = 3;
+  string damage_owner_uuid = 4;
+  string damage_target_uuid = 5;
+  uint64 damage_amount = 6;
+  bool is_critical_hit = 7;
+  DamageType damage_type = 8;
+}
+
+message MapState {
+  uint64 mapDefinitionId = 1;
+  repeated EntityPosition entities = 2;
+  repeated DamageInstance damage_entities = 3;
+}
+

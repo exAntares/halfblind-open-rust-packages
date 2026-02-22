@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+import "protobuf-itemdefinition/data/item_definition.proto";
+
+package protobuf_itemdefinition;
+
+// Values for initializing a new player
+message InventoryInitialValueComponent { 
+    int64 value = 1; 
+}
+
+// The maximum number of elements allowed of a given item type
+message InventoryMaxValueComponent {
+    int64 value = 1;
+}
+
+// Items with this component are hidden in the inventory and do not take space in it
+message InventoryHiddenItemComponent {}
+
+// Special attribute which turns items into countable. No other attribute may be present
+message IsStackableComponent {}
+
+// The amount of a given inventory items that this item or attribute adds upon selling to an NPC.
+message DefaultSellValueComponent {
+    // The item_id for which it sells must be stackable
+    ItemDefinitionRef item_id = 1;
+    int64 value = 2;
+}
+

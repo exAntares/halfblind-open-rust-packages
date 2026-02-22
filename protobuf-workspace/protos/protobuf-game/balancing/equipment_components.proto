@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-game/data/equipment.proto";
+
+// When IsEquipped, it indicates which slot does it take
+message OccupiesEquipmentSlotComponent {
+	EquipmentSlot value = 1;
+}
+
+message GivesPhysicalDefenceComponent {
+	int64 value = 1;
+}
+
+message GivesMagicalDefenceComponent {
+	int64 value = 1;
+}
+
+message GivesPhysicalDamageComponent {
+	int64 value = 1;
+}
+
+message GivesMagicalDamageComponent {
+	int64 value = 1;
+}
+
+// There may be mechanisms to evolve an item (called +1, +2, +3) by paying certain costs and using a specific device/feature
+message CanEvolveIntoItemComponent {
+	uint64 inventory_item_id = 1;
+}
+
+message CanRollAttributesComponent {
+	uint32 min_attribute_count = 1;
+	uint32 max_attribute_count = 2;
+	repeated uint64 attribute_definition_id = 3;
+}

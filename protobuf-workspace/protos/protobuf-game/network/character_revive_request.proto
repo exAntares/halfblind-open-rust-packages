@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+message CharacterReviveRequest {
+  string character_uuid = 1;
+}
+
+message CharacterReviveResponse {
+  uint64 map_definition_to_teleport = 1;
+}

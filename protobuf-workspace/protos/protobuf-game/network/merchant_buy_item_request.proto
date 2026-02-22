@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+import "protobuf-itemdefinition/data/inventory.proto";
+
+message MerchantBuyItemRequest {
+  string character_uuid = 1;
+  uint64 merchant_definition_id = 2; // The merchant to buy things from
+  uint32 item_index = 3; // What you want to buy from the list of things available from the merchant
+}
+
+message MerchantBuyItemResponse {
+  repeated protobuf_itemdefinition.InventoryItem inventory = 1;
+}

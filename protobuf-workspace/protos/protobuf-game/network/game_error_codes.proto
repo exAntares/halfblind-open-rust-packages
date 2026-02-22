@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+enum GameErrorCode {
+  OK_GAME = 0;
+
+  // ONES ABOVE ARE CORE ERRORS
+
+  INVALID_CHARACTER = 14;
+  NOT_ENOUGH_CHARACTER_SLOTS = 15;
+  INVALID_CHARACTER_STAT = 16;
+  PLAYER_IS_NOT_IN_ANY_MAP = 17;
+  QUEST_IS_NOT_AVAILABLE = 19;
+  ITEM_SLOT_OCCUPIED = 20;
+  ITEM_IS_NOT_EQUIPPED = 22;
+  SKILL_NOT_OWNED = 23;
+  INVALID_MAP_ID = 24;
+  CHARACTER_IS_DEAD_AND_CANT_PERFORM_THAT_ACTION = 25; // Actions that require an alive player, like loot, or move
+  CHARACTER_IS_NOT_DEAD_AND_CANT_PERFORM_THAT_ACTION = 26; // Actions that require a dead player, like revive
+  USER_CANT_SELL_ITEM = 27;
+  MERCHANT_INVALID = 28;
+}

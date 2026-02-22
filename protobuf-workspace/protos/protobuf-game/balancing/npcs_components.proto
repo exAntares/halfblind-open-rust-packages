@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "protobuf-itemdefinition/data/transaction.proto";
+
+package protobuf_game;
+
+message MerchantAvailableItemsComponent {
+  repeated protobuf_itemdefinition.Transaction available_items = 1;
+}

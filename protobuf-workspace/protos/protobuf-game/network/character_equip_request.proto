@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf_game;
+
+message CharacterEquipRequest {
+  string character_uuid = 1;
+  string item_instance_id = 2;
+  bool should_equip = 3;
+}
+
+message CharacterEquipResponse {
+}

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "protobuf-itemdefinition/data/item_definition.proto";
+
+package protobuf_game;
+
+message LootTable {
+  uint32 drop_count_min = 1; // Min drops from the loot table
+  uint32 drop_count_max = 2; // Max drops from the loot table
+  repeated WeightedDroppableItem droppable_items = 3;
+}
+
+message WeightedDroppableItem {
+  protobuf_itemdefinition.ItemDefinitionRef id_ref = 1;
+  uint32 min_value = 2;
+  uint32 max_value = 3;
+  uint32 weight = 4;
+}

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf_itemdefinition;
+
+// By default all item definitions are enabled, add this component to disable them
+message ItemDefinitionDisabledComponent {
+}
+
+message DebugNameComponent {
+  string name = 1;
+}
+
