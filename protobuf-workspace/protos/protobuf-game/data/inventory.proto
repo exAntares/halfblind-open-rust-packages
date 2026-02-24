@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package protobuf_itemdefinition;
+package protobuf_game;
 
 // This is an instance of an item
 message InventoryItem {

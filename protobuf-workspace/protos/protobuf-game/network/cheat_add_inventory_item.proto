@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-import "protobuf-itemdefinition/data/inventory.proto";
+import "protobuf-game/data/inventory.proto";
 
-package protobuf_itemdefinition;
+package protobuf_game;
 
 message CheatAddInventoryItemRequest {
   string player_uuid = 1;

@@ -1,17 +1,21 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::characters_service_impl::CharactersServiceImpl;
 use crate::inventory::inventory_item_utils::{generate_inventory_item_for_player_default, try_aggregate_inventories};
+use crate::inventory::inventory_service_impl::InventoryServiceImpl;
 use crate::map::maps_service::MapsService;
 use crate::map::maps_service_impl::MapsServiceImpl;
 use crate::map_update::maps_update_service::MapsUpdateService;
 use crate::map_update::maps_update_service_impl::MapsUpdateServiceImpl;
+use crate::transactions::transaction_service_impl::TransactionServiceImpl;
 use halfblind_database_service::{DatabaseService, DatabaseServiceImpl};
-use halfblind_inventory_service::{InventoryService, InventoryServiceImpl};
+use halfblind_inventory_service::InventoryService;
 use halfblind_itemdefinitions_service::{ItemDefinitionsService, ItemDefinitionsServiceImpl};
-use protobuf_itemdefinition::ItemDefinitionsResponse;
 use halfblind_random::{RandomService, RandomServiceImpl};
+use halfblind_transactions::TransactionService;
 use once_cell::sync::{Lazy, OnceCell};
 use prost::Message;
+use proto_gen::InventoryItem;
+use protobuf_itemdefinition::ItemDefinitionsResponse;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
@@ -47,6 +51,7 @@ pub static SYSTEMS: Lazy<Arc<Systems>> = Lazy::new(|| {
         inventory_service_impl.clone(),
         random_service.clone(),
     ));
+    let transaction_service = Arc::new(TransactionServiceImpl::default());
     let systems = Arc::new(Systems::new(
         database_impl,
         characters_impl,
@@ -54,6 +59,7 @@ pub static SYSTEMS: Lazy<Arc<Systems>> = Lazy::new(|| {
         inventory_service_impl,
         maps_update_service,
         random_service,
+        transaction_service,
     ));
     systems
 });
@@ -66,9 +72,10 @@ pub struct Systems {
     pub maps_service: Arc<dyn MapsService + Send + Sync>,
     pub database_service: Arc<dyn DatabaseService + Send + Sync>,
     pub items_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-    pub inventory_service: Arc<dyn InventoryService + Send + Sync>,
+    pub inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     pub maps_update_service: Arc<dyn MapsUpdateService + Send + Sync>,
     pub random_service: Arc<dyn RandomService + Send + Sync>,
+    pub transaction_service: Arc<dyn TransactionService<InventoryItem> + Send + Sync>,
 }
 
 impl Systems {
@@ -76,9 +83,10 @@ impl Systems {
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         characters_service: Arc<dyn CharactersService + Send + Sync>,
         items_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-        inventory_service: Arc<dyn InventoryService + Send + Sync>,
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         maps_update_service: Arc<dyn MapsUpdateService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
+        transition_service: Arc<dyn TransactionService<InventoryItem> + Send + Sync>,
     ) -> Self {
         Self {
             maps_service: Arc::new(MapsServiceImpl::new(
@@ -93,6 +101,7 @@ impl Systems {
             inventory_service,
             maps_update_service,
             random_service,
+            transaction_service: transition_service,
         }
     }
 }

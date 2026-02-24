@@ -5,7 +5,7 @@ package protobuf_game;
 import "protobuf-game/data/characters.proto";
 import "protobuf-game/data/damage.proto";
 import "protobuf-game/data/position.proto";
-import "protobuf-itemdefinition/data/inventory.proto";
+import "protobuf-game/data/inventory.proto";
 
 message SpawnPoint {
   uint64 enemy_definition_id = 1;
@@ -57,7 +57,7 @@ message EntityPosition {
     MobInstance mob = 4;
     SkillInstance skill = 5;
     ItemInstance pickable_item = 6;
-    protobuf_itemdefinition.InventoryItem pickable_inventory_item = 7;
+    InventoryItem pickable_inventory_item = 7;
   }
 }
 

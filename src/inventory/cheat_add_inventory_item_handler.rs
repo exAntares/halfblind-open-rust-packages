@@ -1,9 +1,9 @@
 use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
-use protobuf_itemdefinition::{CheatAddInventoryItemRequest, CheatAddInventoryItemResponse};
 use halfblind_protobuf_network::ProtoResponse;
 use prost::Message;
+use proto_gen::{CheatAddInventoryItemRequest, CheatAddInventoryItemResponse};
 use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;

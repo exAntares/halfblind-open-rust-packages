@@ -6,12 +6,11 @@ use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
 use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
-use halfblind_transactions::process_player_transaction;
 use prost::Message;
 use proto_gen::map_action_request::MapAction;
-use proto_gen::CharacterStat;
+use proto_gen::{CharacterStat, InventoryItem};
 use proto_gen::{GameErrorCode, MapActionRequest, MapActionResponse};
-use protobuf_itemdefinition::{InventoryItem, ItemsErrorCode};
+use protobuf_itemdefinition::ItemsErrorCode;
 use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -198,7 +197,7 @@ impl RequestHandler for MapActionHandler {
                         Some(x) => x,
                     },
                 };
-                match process_player_transaction(
+                match SYSTEMS.transaction_service.process_player_transaction(
                     SYSTEMS.inventory_service.clone(),
                     SYSTEMS.database_service.clone(),
                     SYSTEMS.random_service.clone(),

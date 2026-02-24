@@ -1,22 +1,21 @@
 use async_trait::async_trait;
-use protobuf_itemdefinition::InventoryItem;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 #[async_trait]
-pub trait InventoryService {
+pub trait InventoryService<T> {
     async fn get_player_inventory(
         &self,
         player_uuid: Uuid,
-    ) -> Result<Arc<RwLock<Vec<InventoryItem>>>, sqlx::Error>;
+    ) -> Result<Arc<RwLock<Vec<T>>>, sqlx::Error>;
 
     async fn get_inventory(
         &self,
         player_uuid: Uuid,
         character_uuid: Uuid,
-    ) -> Result<Arc<RwLock<Vec<InventoryItem>>>, sqlx::Error>;
+    ) -> Result<Arc<RwLock<Vec<T>>>, sqlx::Error>;
 
     async fn get_definition_value_summed(
         &self,
@@ -38,19 +37,19 @@ pub trait InventoryService {
         &self,
         player_uuid: Uuid,
         secondary_uuid: Uuid,
-        inventory: Vec<InventoryItem>,
-    ) -> Result<Vec<InventoryItem>, sqlx::Error>;
+        inventory: Vec<T>,
+    ) -> Result<Vec<T>, sqlx::Error>;
 
     fn try_aggregate_inventories(
         &self,
-        source: Vec<InventoryItem>,
-        target: &mut Vec<InventoryItem>,
-    ) -> Vec<InventoryItem>;
+        source: Vec<T>,
+        target: &mut Vec<T>,
+    ) -> Vec<T>;
 
     fn generate_inventory_item_for_player(
         &self,
         player_uuid: Uuid,
         definition_id: u64,
         amount: u64,
-    ) -> InventoryItem;
+    ) -> T;
 }

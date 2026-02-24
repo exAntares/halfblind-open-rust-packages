@@ -4,7 +4,6 @@ use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
 use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
-use halfblind_transactions::process_player_transaction;
 use prost::Message;
 use proto_gen::QuestStatus;
 use proto_gen::{ClaimQuestResponse, GameErrorCode, StartQuestRequest};
@@ -79,7 +78,7 @@ impl RequestHandler for ClaimQuestHandler {
             },
         };
         // TODO: luis getting rewards could fail due not enough inventory space!! We should check it before and ignore the claim
-        match process_player_transaction(
+        match SYSTEMS.transaction_service.process_player_transaction(
             SYSTEMS.inventory_service.clone(),
             SYSTEMS.database_service.clone(),
             SYSTEMS.random_service.clone(),

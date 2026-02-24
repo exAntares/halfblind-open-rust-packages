@@ -1,9 +1,8 @@
 use crate::behaviour_trees::behaviour_tree_node::BehaviourTreeNodeState;
 use crate::characters::models::Character;
 use dashmap::DashMap;
-use proto_gen::{CharacterStat, DamageType, Position};
+use proto_gen::{CharacterStat, DamageType, InventoryItem, Position};
 use proto_gen::{MobComponent, SkillComponent};
-use ::protobuf_itemdefinition::*;
 use rand::rngs::SmallRng;
 use std::collections::HashSet;
 use uuid::Uuid;

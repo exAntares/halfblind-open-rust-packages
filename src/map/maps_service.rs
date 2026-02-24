@@ -1,7 +1,7 @@
 use crate::map::game_map::GameMap;
 use async_trait::async_trait;
 use halfblind_network::*;
-use protobuf_itemdefinition::InventoryItem;
+use proto_gen::InventoryItem;
 use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;

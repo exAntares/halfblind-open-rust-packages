@@ -21,84 +21,6 @@ pub struct ItemDefinitionRefAmount {
     #[prost(uint64, tag="2")]
     pub amount: u64,
 }
-/// This is an instance of an item
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InventoryItem {
-    /// It may be the ID from the database or the EntityPosition.ItemInstance.instance_id
-    #[prost(string, tag="1")]
-    pub item_instance_id: ::prost::alloc::string::String,
-    #[prost(uint64, tag="2")]
-    pub item_definition_id: u64,
-    /// Amount is only used when the item is stackable
-    #[prost(uint64, tag="3")]
-    pub amount: u64,
-    #[prost(bool, tag="4")]
-    pub is_equipped: bool,
-    #[prost(message, repeated, tag="5")]
-    pub attributes: ::prost::alloc::vec::Vec<InventoryItemAttribute>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct InventoryItemAttribute {
-    #[prost(enumeration="ItemAttributeDefinition", tag="1")]
-    pub attr_definition: i32,
-    #[prost(float, tag="2")]
-    pub attr_value: f32,
-}
-/// / Here are all the attributes that items may contain.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum ItemAttributeDefinition {
-    IncreaseVitality = 0,
-    IncreaseIntelligence = 1,
-    IncreaseStrength = 2,
-    IncreaseAgility = 3,
-    /// Skill damage should take into account the dps of a weapon
-    IncreaseWeaponDamage = 4,
-    /// Skill damage should take into account the dps of a weapon
-    IncreaseWeaponDamagePercentage = 5,
-    /// Attack/Skill (including healing)
-    IncreaseCriticalChancePercentage = 6,
-    IncreaseCriticalDamagePercentage = 7,
-    IncreaseMovementSpeedPercentage = 8,
-    /// Chance for better drops on loot table
-    IncreaseLuckPercentage = 9,
-}
-impl ItemAttributeDefinition {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::IncreaseVitality => "IncreaseVitality",
-            Self::IncreaseIntelligence => "IncreaseIntelligence",
-            Self::IncreaseStrength => "IncreaseStrength",
-            Self::IncreaseAgility => "IncreaseAgility",
-            Self::IncreaseWeaponDamage => "IncreaseWeaponDamage",
-            Self::IncreaseWeaponDamagePercentage => "IncreaseWeaponDamagePercentage",
-            Self::IncreaseCriticalChancePercentage => "IncreaseCriticalChancePercentage",
-            Self::IncreaseCriticalDamagePercentage => "IncreaseCriticalDamagePercentage",
-            Self::IncreaseMovementSpeedPercentage => "IncreaseMovementSpeedPercentage",
-            Self::IncreaseLuckPercentage => "IncreaseLuckPercentage",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "IncreaseVitality" => Some(Self::IncreaseVitality),
-            "IncreaseIntelligence" => Some(Self::IncreaseIntelligence),
-            "IncreaseStrength" => Some(Self::IncreaseStrength),
-            "IncreaseAgility" => Some(Self::IncreaseAgility),
-            "IncreaseWeaponDamage" => Some(Self::IncreaseWeaponDamage),
-            "IncreaseWeaponDamagePercentage" => Some(Self::IncreaseWeaponDamagePercentage),
-            "IncreaseCriticalChancePercentage" => Some(Self::IncreaseCriticalChancePercentage),
-            "IncreaseCriticalDamagePercentage" => Some(Self::IncreaseCriticalDamagePercentage),
-            "IncreaseMovementSpeedPercentage" => Some(Self::IncreaseMovementSpeedPercentage),
-            "IncreaseLuckPercentage" => Some(Self::IncreaseLuckPercentage),
-            _ => None,
-        }
-    }
-}
 /// Represents an item and its quantity
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TransactionItem {
@@ -163,66 +85,13 @@ pub struct Transaction {
     #[prost(message, repeated, tag="5")]
     pub rewards_random: ::prost::alloc::vec::Vec<TransactionLootBag>,
 }
-/// Values for initializing a new player
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct InventoryInitialValueComponent {
-    #[prost(int64, tag="1")]
-    pub value: i64,
-}
-/// The maximum number of elements allowed of a given item type
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct InventoryMaxValueComponent {
-    #[prost(int64, tag="1")]
-    pub value: i64,
-}
-/// Items with this component are hidden in the inventory and do not take space in it
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct InventoryHiddenItemComponent {
-}
-/// Special attribute which turns items into countable. No other attribute may be present
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct IsStackableComponent {
-}
-/// The amount of a given inventory items that this item or attribute adds upon selling to an NPC.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct DefaultSellValueComponent {
-    /// The item_id for which it sells must be stackable
-    #[prost(message, optional, tag="1")]
-    pub item_id: ::core::option::Option<ItemDefinitionRef>,
-    #[prost(int64, tag="2")]
-    pub value: i64,
-}
-/// By default all item definitions are enabled, add this component to disable them
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ItemDefinitionDisabledComponent {
+pub struct TransactionInstancesRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DebugNameComponent {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TransactionComponent {
-    #[prost(message, optional, tag="1")]
-    pub transaction: ::core::option::Option<Transaction>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CheatAddInventoryItemRequest {
-    #[prost(string, tag="1")]
-    pub player_uuid: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub character_uuid: ::prost::alloc::string::String,
-    #[prost(message, repeated, tag="3")]
-    pub item_def: ::prost::alloc::vec::Vec<InventoryItem>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CheatAddInventoryItemResponse {
-    #[prost(string, tag="1")]
-    pub player_uuid: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub character_uuid: ::prost::alloc::string::String,
-    #[prost(message, repeated, tag="3")]
-    pub inventory: ::prost::alloc::vec::Vec<InventoryItem>,
+pub struct TransactionInstancesResponse {
+    #[prost(message, repeated, tag="1")]
+    pub transactions: ::prost::alloc::vec::Vec<TransactionInstance>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -278,52 +147,47 @@ pub struct ItemDefinitionsResponse {
     #[prost(message, repeated, tag="1")]
     pub definitions: ::prost::alloc::vec::Vec<ItemDefinition>,
 }
-/// ---------- NETWORK ----------
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionComponent {
+    #[prost(message, optional, tag="1")]
+    pub transaction: ::core::option::Option<Transaction>,
+}
+/// By default all item definitions are enabled, add this component to disable them
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct PlayerInventoryRequest {
+pub struct ItemDefinitionDisabledComponent {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PlayerInventoryResponse {
-    #[prost(message, repeated, tag="1")]
-    pub inventory: ::prost::alloc::vec::Vec<InventoryItem>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct TransactionInstancesRequest {
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TransactionInstancesResponse {
-    #[prost(message, repeated, tag="1")]
-    pub transactions: ::prost::alloc::vec::Vec<TransactionInstance>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TransactionRequest {
-    #[prost(uint64, tag="1")]
-    pub transaction_id: u64,
-    /// using player uuid uses player inventory, using character uuid uses character inventory
-    #[prost(string, tag="2")]
-    pub inventory_source_uuid: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TransactionResponse {
-    /// If the transaction takes longer than 0 seconds we get the transaction instance ids
-    #[prost(message, repeated, tag="1")]
-    pub transaction_instance_id: ::prost::alloc::vec::Vec<TransactionInstance>,
-    /// updated inventory
-    #[prost(message, repeated, tag="2")]
-    pub inventory: ::prost::alloc::vec::Vec<InventoryItem>,
-    /// what you got instantly
-    #[prost(message, repeated, tag="3")]
-    pub rewarded: ::prost::alloc::vec::Vec<InventoryItem>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TransactionResolveRequest {
+pub struct DebugNameComponent {
     #[prost(string, tag="1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TransactionResolveResponse {
-    /// updated inventory
-    #[prost(message, repeated, tag="1")]
-    pub inventory: ::prost::alloc::vec::Vec<InventoryItem>,
+/// Values for initializing a new player
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct InventoryInitialValueComponent {
+    #[prost(int64, tag="1")]
+    pub value: i64,
+}
+/// The maximum number of elements allowed of a given item type
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct InventoryMaxValueComponent {
+    #[prost(int64, tag="1")]
+    pub value: i64,
+}
+/// Items with this component are hidden in the inventory and do not take space in it
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct InventoryHiddenItemComponent {
+}
+/// Special attribute which turns items into countable. No other attribute may be present
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct IsStackableComponent {
+}
+/// The amount of a given inventory items that this item or attribute adds upon selling to an NPC.
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DefaultSellValueComponent {
+    /// The item_id for which it sells must be stackable
+    #[prost(message, optional, tag="1")]
+    pub item_id: ::core::option::Option<ItemDefinitionRef>,
+    #[prost(int64, tag="2")]
+    pub value: i64,
 }
 // @@protoc_insertion_point(module)

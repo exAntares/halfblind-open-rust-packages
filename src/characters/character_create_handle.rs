@@ -6,11 +6,11 @@ use crate::item_definitions::{
 use crate::systems::systems::{Systems, SYSTEMS};
 use async_trait::async_trait;
 use halfblind_network::*;
-use protobuf_itemdefinition::{InventoryItem, ItemsErrorCode};
 use halfblind_protobuf_network::ProtoResponse;
 use prost::Message;
-use proto_gen::{CharacterCreateRequest, CharacterCreateResponse, GameErrorCode};
+use proto_gen::{CharacterCreateRequest, CharacterCreateResponse, GameErrorCode, InventoryItem};
 use proto_gen::{CharacterInstance, CharacterPrivateInstance};
+use protobuf_itemdefinition::ItemsErrorCode;
 use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;

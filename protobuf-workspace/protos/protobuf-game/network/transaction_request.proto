@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package protobuf_itemdefinition;
+package protobuf_game;
 
-import "protobuf-itemdefinition/data/inventory.proto";
+import "protobuf-game/data/inventory.proto";
 import "protobuf-itemdefinition/data/transaction.proto";
 
 message TransactionRequest {
@@ -11,7 +11,7 @@ message TransactionRequest {
 }
 
 message TransactionResponse {
-  repeated TransactionInstance transaction_instance_id = 1; // If the transaction takes longer than 0 seconds we get the transaction instance ids
+  repeated protobuf_itemdefinition.TransactionInstance transaction_instance_id = 1; // If the transaction takes longer than 0 seconds we get the transaction instance ids
   repeated InventoryItem inventory = 2; // updated inventory
   repeated InventoryItem rewarded = 3; // what you got instantly
 }

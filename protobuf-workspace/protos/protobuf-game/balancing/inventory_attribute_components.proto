@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package protobuf_game;
 
-import "protobuf-itemdefinition/data/inventory.proto";
+import "protobuf-game/data/inventory.proto";
 
 // Defines the attributes that item inventories may roll (this is the definition)
 message InventoryAttributeRollDefinition {
@@ -10,5 +10,5 @@ message InventoryAttributeRollDefinition {
     uint64 max_value = 2;
     float result_multiplier = 3; // 1 by default, use to produce fixed scaled values (e.g. 5, 10, 15)
     uint32 weight = 4; // Used to make some attributes more rare than others
-    protobuf_itemdefinition.ItemAttributeDefinition item_attribute_definition = 5;
+    ItemAttributeDefinition item_attribute_definition = 5;
 }

@@ -4,7 +4,7 @@ use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_random::RandomService;
 use once_cell::sync::Lazy;
 use prost::Message;
-use protobuf_itemdefinition::{InventoryItem, ItemAttributeDefinition};
+use proto_gen::{InventoryItem, ItemAttributeDefinition};
 use std::cmp::max;
 use std::collections::HashMap;
 use std::sync::Arc;

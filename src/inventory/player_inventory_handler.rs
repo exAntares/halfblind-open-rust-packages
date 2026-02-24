@@ -1,8 +1,8 @@
 use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
-use protobuf_itemdefinition::PlayerInventoryResponse;
 use halfblind_protobuf_network::ProtoResponse;
+use proto_gen::PlayerInventoryResponse;
 use std::error::Error;
 use std::sync::Arc;
 

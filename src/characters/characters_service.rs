@@ -1,7 +1,6 @@
 use crate::characters::models::DatabaseCharacter;
 use async_trait::async_trait;
-use protobuf_itemdefinition::InventoryItem;
-use proto_gen::CharacterDefinitionComponent;
+use proto_gen::{CharacterDefinitionComponent, InventoryItem};
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;

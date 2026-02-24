@@ -1,8 +1,8 @@
 use crate::systems::systems::SYSTEMS;
 use halfblind_network::*;
-use protobuf_itemdefinition::{TransactionResolveRequest, TransactionResolveResponse};
 use halfblind_protobuf_network::*;
 use halfblind_transactions::resolve_expired_transaction;
+use proto_gen::{TransactionResolveRequest, TransactionResolveResponse};
 use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;

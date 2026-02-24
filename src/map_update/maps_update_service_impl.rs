@@ -15,7 +15,7 @@ use halfblind_inventory_service::InventoryService;
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_network::*;
 use halfblind_random::RandomService;
-use proto_gen::{entity_position, CharacterInstance, CharacterPrivateInstance, EntityPosition, ItemInstance, MapState, MobInstance, SkillInstance, StatusInstance};
+use proto_gen::{entity_position, CharacterInstance, CharacterPrivateInstance, EntityPosition, InventoryItem, ItemInstance, MapState, MobInstance, SkillInstance, StatusInstance};
 use proto_gen::{MapComponent, MapUpdateResponse};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -48,7 +48,7 @@ impl MapsUpdateService for MapsUpdateServiceImpl {
 pub struct MapsUpdateServiceImpl {
     character_service: Arc<dyn CharactersService + Send + Sync>,
     item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-    inventory_service: Arc<dyn InventoryService + Send + Sync>,
+    inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
 }
 
@@ -56,7 +56,7 @@ impl MapsUpdateServiceImpl {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
         item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-        inventory_service: Arc<dyn InventoryService + Send + Sync>,
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
     ) -> Self {
         Self {
@@ -70,7 +70,7 @@ impl MapsUpdateServiceImpl {
     fn start_update_loop(
         character_service: Arc<dyn CharactersService + Send + Sync>,
         item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-        inventory_service: Arc<dyn InventoryService + Send + Sync>,
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         maps_service: Arc<dyn MapsService + Send + Sync>,
         map: Arc<GameMap>,
@@ -239,7 +239,7 @@ impl MapsUpdateServiceImpl {
 
     async fn try_level_up_character(
         character_instance: &mut DatabaseCharacter,
-        inventory_service: Arc<dyn InventoryService + Send + Sync>,
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         characters_service: Arc<dyn CharactersService + Send + Sync>,
     ) {
         let character_inventory_lock = match inventory_service
@@ -268,7 +268,7 @@ impl MapsUpdateServiceImpl {
 
     async fn merge_rewindable_inventory_into_real_inventory(
         current_state: &GameState,
-        inventory_service: Arc<dyn InventoryService + Send + Sync>,
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         characters_service: Arc<dyn CharactersService + Send + Sync>,
     ) {
         let mut unclaimed_drops: Vec<MapEntities> = Vec::new();
@@ -399,7 +399,7 @@ impl MapsUpdateServiceImpl {
     pub async fn game_state_to_update_response(
         map_definition_id: u64,
         game_state: &GameState,
-        inventory_service: Arc<dyn InventoryService + Send + Sync>,
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     ) -> MapUpdateResponse {
         let mut map_state = MapState {
             map_definition_id,

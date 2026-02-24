@@ -2,7 +2,7 @@ use crate::item_definitions::TransactionComponentLookup;
 use crate::systems::systems::SYSTEMS;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
-use halfblind_transactions::process_player_transaction;
+use proto_gen::{TransactionRequest, TransactionResponse};
 use ::protobuf_itemdefinition::*;
 use std::error::Error;
 use std::sync::Arc;
@@ -43,7 +43,7 @@ async fn handle(
     let secondary_key_uuid = Uuid::parse_str(&req.inventory_source_uuid)?;
 
     // Process the transaction
-    let result = match process_player_transaction(
+    let result = match SYSTEMS.transaction_service.process_player_transaction(
         SYSTEMS.inventory_service.clone(),
         SYSTEMS.database_service.clone(),
         SYSTEMS.random_service.clone(),

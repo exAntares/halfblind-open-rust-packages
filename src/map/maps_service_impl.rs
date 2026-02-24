@@ -10,7 +10,7 @@ use dashmap::DashMap;
 use halfblind_inventory_service::InventoryService;
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_network::*;
-use ::protobuf_itemdefinition::*;
+use proto_gen::InventoryItem;
 use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -174,7 +174,7 @@ pub struct MapsServiceImpl {
     all_maps_by_id: DashMap<u64, Arc<GameMap>>,
     map_id_by_player: DashMap<Uuid, u64>,
     character_service: Arc<dyn CharactersService + Send + Sync>,
-    inventory_service: Arc<dyn InventoryService + Send + Sync>,
+    inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
     maps_update_service_impl: Arc<dyn MapsUpdateService + Send + Sync>,
 }
@@ -183,7 +183,7 @@ impl MapsServiceImpl {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
         item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-        inventory_service: Arc<dyn InventoryService + Send + Sync>,
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         maps_update_service_impl: Arc<dyn MapsUpdateService + Send + Sync>,
     ) -> Self {
         let all_maps_by_id = DashMap::new();

@@ -13,3 +13,4 @@ sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio", "tls-native
 chrono = "0.4.41"
 tokio = { version = "1", features = ["full"] }
 uuid = { version = "1.17.0", features = ["v4"] }
+async-trait = "0.1.77"

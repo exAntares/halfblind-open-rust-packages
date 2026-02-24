@@ -1,16 +1,15 @@
-use crate::models::PlayerItem;
-use crate::InventoryService;
+use crate::inventory::models::PlayerItem;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_database_service::DatabaseService;
-use protobuf_itemdefinition::InventoryItem;
-use protobuf_itemdefinition::InventoryItemAttribute;
+use halfblind_inventory_service::InventoryService;
+use proto_gen::{InventoryItem, InventoryItemAttribute};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 #[async_trait]
-impl InventoryService for InventoryServiceImpl {
+impl InventoryService<InventoryItem> for InventoryServiceImpl {
     async fn get_player_inventory(
         &self,
         player_uuid: Uuid,

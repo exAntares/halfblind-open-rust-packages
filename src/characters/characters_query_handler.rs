@@ -2,10 +2,9 @@ use crate::inventory::inventory_item_utils::filter_visible_inventory;
 use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
-use protobuf_itemdefinition::InventoryItem;
 use halfblind_protobuf_network::*;
-use proto_gen::{CharacterInstance, CharacterPrivateInstance};
 use proto_gen::CharactersQueryResponse;
+use proto_gen::{CharacterInstance, CharacterPrivateInstance, InventoryItem};
 use std::error::Error;
 use std::sync::Arc;
 

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package protobuf_game;
 
-import "protobuf-itemdefinition/data/inventory.proto";
+import "protobuf-game/data/inventory.proto";
 
 message MerchantBuyItemRequest {
   string character_uuid = 1;
@@ -11,5 +11,5 @@ message MerchantBuyItemRequest {
 }
 
 message MerchantBuyItemResponse {
-  repeated protobuf_itemdefinition.InventoryItem inventory = 1;
+  repeated InventoryItem inventory = 1;
 }

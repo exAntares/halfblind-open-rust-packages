@@ -3,8 +3,7 @@ use crate::inventory::inventory_item_utils::{
     filter_equipped_items, sum_inventory_item_attributes_by_definition,
 };
 use crate::map::models::StatusInstance;
-use proto_gen::{DamageOnHitComponent, HealOnHitComponent, StatType, StatusType};
-use protobuf_itemdefinition::{InventoryItem, ItemAttributeDefinition};
+use proto_gen::{DamageOnHitComponent, HealOnHitComponent, InventoryItem, ItemAttributeDefinition, StatType, StatusType};
 use rand::prelude::SmallRng;
 use rand::Rng;
 

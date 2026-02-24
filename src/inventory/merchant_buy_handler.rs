@@ -4,7 +4,6 @@ use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
-use halfblind_transactions::process_player_transaction;
 use prost::Message;
 use proto_gen::{MerchantBuyItemRequest, MerchantBuyItemResponse};
 use protobuf_itemdefinition::ItemsErrorCode;
@@ -49,7 +48,7 @@ impl RequestHandler for MerchantBuyItemHandler {
                     ))
                 } else {
                     let transaction = merchant_component.available_items[req.item_index as usize].clone();
-                    let result = match process_player_transaction(
+                    let result = match SYSTEMS.transaction_service.process_player_transaction(
                         SYSTEMS.inventory_service.clone(),
                         SYSTEMS.database_service.clone(),
                         SYSTEMS.random_service.clone(),

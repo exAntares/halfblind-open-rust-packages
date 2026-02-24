@@ -4,7 +4,7 @@ package protobuf_game;
 
 import "protobuf-game/data/characters.proto";
 import "protobuf-game/data/position.proto";
-import "protobuf-itemdefinition/data/inventory.proto";
+import "protobuf-game/data/inventory.proto";
 
 message MapActionRequest {
   string character_uuid = 1;
@@ -48,5 +48,5 @@ message UseTeleport {
 
 // Allows dropping items. Only items which are not equipped and not invisible can be dropped
 message DropItem {
-  repeated protobuf_itemdefinition.InventoryItem item = 1;
+  repeated InventoryItem item = 1;
 }

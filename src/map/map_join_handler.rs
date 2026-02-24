@@ -5,8 +5,7 @@ use async_trait::async_trait;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
 use prost::Message;
-use proto_gen::{GameErrorCode, MapJoinRequest, MapJoinResponse};
-use ::protobuf_itemdefinition::*;
+use proto_gen::{GameErrorCode, InventoryItem, MapJoinRequest, MapJoinResponse};
 
 #[derive(Default)]
 pub struct MapJoinHandler;

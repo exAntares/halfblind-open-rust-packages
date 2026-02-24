@@ -47,7 +47,7 @@ echo "Compiling:\n ${PROTO_FILES}\n"
 #  --prost_opt=flat_output_dir=true $PROTO_FILES
 
 cp -R generated/rust/protobuf_network.rs ../halfblind-protobuf-network/src/
-cp -R generated/rust/protobuf_itemdefinition.rs ../halfblind-protobuf-itemdefinitions/src/
+cp -R generated/rust/protobuf_itemdefinition.rs ../protobuf-itemdefinition/src/
 cp -R generated/rust/protobuf_game.rs ../proto-gen/src/
 
 ## GENERATE C#
