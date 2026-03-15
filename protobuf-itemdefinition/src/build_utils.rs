@@ -185,7 +185,7 @@ fn generate_component_lookup(
 
     if is_singleton_component(&static_name) {
         let singleton_variable_name = to_snake_case_upper(static_name.replace("ComponentLookup", "").as_str());
-        let singleton_id = indexes.iter().map(|(_, _, id)| *id).min().unwrap();
+        let singleton_id = indexes.iter().map(|(_, _, id)| *id).min().unwrap_or_default();
         let singleton_impl = indexes.iter().map(|(definition_index, component_index, definition_id)| {
             format!(
                 r#"
