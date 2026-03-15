@@ -4,7 +4,7 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-pub fn generate_item_definition_service(definitions: &[ItemDefinition], proto_path: &str) {
+pub fn generate_item_definition_service(definitions: &[ItemDefinition], proto_path: Vec<&str>) {
     let out_dir = env::var("OUT_DIR").unwrap();
 
     // Discover all unique component types
@@ -98,7 +98,7 @@ fn generate_component_lookups(component_types: &HashSet<String>, definitions: &[
 }
 
 fn discover_component_types(
-    proto_path: &str,
+    proto_paths: Vec<&str>,
     definitions: &[ItemDefinition],
 ) -> HashSet<String> {
     let mut component_types = HashSet::new();
@@ -111,11 +111,13 @@ fn discover_component_types(
             }
         }
     }
-
-    let proto_components = get_all_proto_ending_with(proto_path,"Component");
-    for proto_component in proto_components {
-        if !component_types.contains(&proto_component) {
-            component_types.insert(format!("proto_balancing::{}",proto_component));
+    for proto_path in proto_paths {
+        let namespace = proto_path.split('/').next_back().unwrap().replace(".rs", "");
+        let proto_components = get_all_proto_ending_with(proto_path, "Component");
+        for proto_component in proto_components {
+            if !component_types.contains(&proto_component) {
+                component_types.insert(format!("{}::{}", namespace, proto_component));
+            }
         }
     }
 

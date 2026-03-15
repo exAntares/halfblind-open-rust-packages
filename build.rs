@@ -15,7 +15,7 @@ fn main() {
     // Tell Cargo to rerun the build script if ItemDefinitions.bytes changes
     println!("cargo:rerun-if-changed=data/ItemDefinitions.bytes");
 
-    let proto_path = "proto-gen/src/protobuf_game.rs";
+    let proto_path = vec!["proto-gen/src/protobuf_game.rs", "protobuf-itemdefinition/src/protobuf_itemdefinition.rs"];
     generate_item_definition_service(ITEM_DEFINITIONS_RESPONSE_DEFAULT.definitions.as_slice(), proto_path);
 
     generate_network_handlers_file();
