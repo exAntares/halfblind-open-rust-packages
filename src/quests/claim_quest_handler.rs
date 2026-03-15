@@ -2,10 +2,11 @@ use crate::handlers::utils;
 use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
-use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
+use halfblind_protobuf_network::ProtoResponse;
 use prost::Message;
 use proto_gen::QuestStatus;
 use proto_gen::{ClaimQuestResponse, GameErrorCode, StartQuestRequest};
+use protobuf_itemdefinition::ItemsErrorCode;
 use std::error::Error;
 use std::sync::Arc;
 
@@ -57,33 +58,22 @@ impl RequestHandler for ClaimQuestHandler {
             ));
         }
 
-        let quest_transaction = match SYSTEMS.item_definition_lookup_service.transaction_component(&req.quest_definition_id) {
-            None => {
-                return Ok(build_error_response(
-                    message_id,
-                    ErrorCode::UnknownError.into(),
-                    "Quest is not a transaction",
-                ));
-            }
-            Some(transaction_component) => match &transaction_component.transaction {
-                None => {
-                    return Ok(build_error_response(
-                        message_id,
-                        ErrorCode::UnknownError.into(),
-                        "Quest is not a transaction",
-                    ));
-                }
-                Some(x) => x.clone(),
-            },
+        if SYSTEMS.item_definition_lookup_service.transaction_component(&req.quest_definition_id).is_none() {
+            return Ok(build_error_response(
+                message_id,
+                ItemsErrorCode::TransactionInvalid.into(),
+                "Quest is not a transaction",
+            ));
         };
+
         // TODO: luis getting rewards could fail due not enough inventory space!! We should check it before and ignore the claim
-        match SYSTEMS.transaction_service.process_player_transaction(
+        match SYSTEMS.transaction_service.process_player_transaction_id(
             SYSTEMS.inventory_service.clone(),
             SYSTEMS.database_service.clone(),
             SYSTEMS.random_service.clone(),
             player_uuid,
             character_uuid,
-            &quest_transaction,
+            req.quest_definition_id,
         ).await {
             Ok(_) => {}
             Err(e) => {

@@ -54,11 +54,6 @@ pub struct TransactionWeightedReward {
     pub weight: u32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TransactionLootBag {
-    #[prost(message, repeated, tag="1")]
-    pub weighted_rewards: ::prost::alloc::vec::Vec<TransactionWeightedReward>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TransactionInstance {
     #[prost(string, tag="1")]
     pub id: ::prost::alloc::string::String,
@@ -66,24 +61,6 @@ pub struct TransactionInstance {
     pub endtime: u64,
     #[prost(message, optional, tag="3")]
     pub reward: ::core::option::Option<TransactionItem>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Transaction {
-    /// Items required to be owned (won't be deducted)
-    #[prost(message, repeated, tag="1")]
-    pub required: ::prost::alloc::vec::Vec<TransactionItem>,
-    /// Items required to be NOT be owned (won't be deducted)
-    #[prost(message, repeated, tag="2")]
-    pub required_negative: ::prost::alloc::vec::Vec<TransactionItem>,
-    /// Items consumed, removed from the user inventory
-    #[prost(message, repeated, tag="3")]
-    pub consumed: ::prost::alloc::vec::Vec<TransactionItem>,
-    /// Items produced some can be instant others over time
-    #[prost(message, repeated, tag="4")]
-    pub rewarded: ::prost::alloc::vec::Vec<TransactionReward>,
-    /// Chose 1 item from each bag
-    #[prost(message, repeated, tag="5")]
-    pub rewards_random: ::prost::alloc::vec::Vec<TransactionLootBag>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct TransactionInstancesRequest {
@@ -147,10 +124,39 @@ pub struct ItemDefinitionsResponse {
     #[prost(message, repeated, tag="1")]
     pub definitions: ::prost::alloc::vec::Vec<ItemDefinition>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct TransactionComponent {
-    #[prost(message, optional, tag="1")]
-    pub transaction: ::core::option::Option<Transaction>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionRequiredItemsComponent {
+    #[prost(message, repeated, tag="1")]
+    pub required: ::prost::alloc::vec::Vec<TransactionItem>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionRequiredNotHavingItemsComponent {
+    #[prost(message, repeated, tag="1")]
+    pub required_not_having: ::prost::alloc::vec::Vec<TransactionItem>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionConsumedItemsComponent {
+    #[prost(message, repeated, tag="1")]
+    pub consumed: ::prost::alloc::vec::Vec<TransactionItem>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionRewardedItemsComponent {
+    #[prost(message, repeated, tag="1")]
+    pub rewarded: ::prost::alloc::vec::Vec<TransactionReward>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionRewardedItemsRandomComponent {
+    /// Chose 1 item from each bag
+    #[prost(message, repeated, tag="1")]
+    pub reward_pools: ::prost::alloc::vec::Vec<ItemDefinitionRef>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PoolWeightedItemsComponent {
+    #[prost(message, repeated, tag="1")]
+    pub weighted_rewards: ::prost::alloc::vec::Vec<TransactionWeightedReward>,
 }
 /// By default all item definitions are enabled, add this component to disable them
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]

@@ -3,7 +3,26 @@ syntax = "proto3";
 package protobuf_itemdefinition;
 
 import "protobuf-itemdefinition/data/transaction.proto";
+import "protobuf-itemdefinition/data/item_definition.proto";
 
-message TransactionComponent {
-    Transaction transaction = 1;
+message TransactionComponent {}
+
+message TransactionRequiredItemsComponent {
+    repeated TransactionItem required = 1;
+}
+
+message TransactionRequiredNotHavingItemsComponent {
+    repeated TransactionItem required_not_having = 1;
+}
+
+message TransactionConsumedItemsComponent {
+    repeated TransactionItem consumed = 1;
+}
+
+message TransactionRewardedItemsComponent {
+    repeated TransactionReward rewarded = 1;
+}
+
+message TransactionRewardedItemsRandomComponent {
+    repeated ItemDefinitionRef reward_pools = 1;       // Chose 1 item from each bag
 }

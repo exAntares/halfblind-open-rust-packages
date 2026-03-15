@@ -24,20 +24,9 @@ message TransactionWeightedReward {
     uint32 weight = 2;
 }
 
-message TransactionLootBag {
-    repeated TransactionWeightedReward weightedRewards = 1;
-}
-
 message TransactionInstance {
     string id = 1;
     uint64 endtime = 2;
     TransactionItem reward = 3;
 }
 
-message Transaction {
-    repeated TransactionItem required = 1;               // Items required to be owned (won't be deducted)
-    repeated TransactionItem required_negative = 2;      // Items required to be NOT be owned (won't be deducted)
-    repeated TransactionItem consumed = 3;               // Items consumed, removed from the user inventory
-    repeated TransactionReward rewarded = 4;             // Items produced some can be instant others over time
-    repeated TransactionLootBag rewardsRandom = 5;       // Chose 1 item from each bag
-}

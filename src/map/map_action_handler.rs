@@ -177,32 +177,20 @@ impl RequestHandler for MapActionHandler {
                     ));
                 }
                 let teleport = game_map.map_component.teleporter[index];
-                let transaction = match SYSTEMS.item_definition_lookup_service.transaction_component(&teleport.transaction_id) {
-                    None => {
-                        return Ok(build_error_response(
-                            message_id,
-                            ItemsErrorCode::TransactionInvalid.into(),
-                            "Transaction does not exist",
-                        ));
-                    }
-                    Some(x) => match &x.transaction {
-                        None => {
-                            return Ok(build_error_response(
-                                message_id,
-                                ItemsErrorCode::TransactionInvalid.into(),
-                                "Transaction does not exist",
-                            ));
-                        }
-                        Some(x) => x.clone(),
-                    },
+                if SYSTEMS.item_definition_lookup_service.transaction_component(&teleport.transaction_id).is_none() {
+                    return Ok(build_error_response(
+                        message_id,
+                        ItemsErrorCode::TransactionInvalid.into(),
+                        "Transaction does not exist",
+                    ));
                 };
-                match SYSTEMS.transaction_service.process_player_transaction(
+                match SYSTEMS.transaction_service.process_player_transaction_id(
                     SYSTEMS.inventory_service.clone(),
                     SYSTEMS.database_service.clone(),
                     SYSTEMS.random_service.clone(),
                     player_uuid,
                     character_uuid,
-                    &transaction,
+                    teleport.transaction_id,
                 ).await {
                     Ok(_) => {}
                     Err(e) => {

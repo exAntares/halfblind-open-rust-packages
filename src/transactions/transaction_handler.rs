@@ -19,36 +19,23 @@ async fn handle(
         Ok(result) => result,
         Err(response) => return Ok(response),
     };
-    let transaction = match get_transaction_definition(req.transaction_id).await {
-        Ok(result) => match &result.transaction {
-            None => {
-                return Ok(build_error_response(
-                    message_id,
-                    ItemsErrorCode::TransactionInvalid.into(),
-                    &format!("Transaction definition not found for id {}.", req.transaction_id),
-                ));
-            }
-            Some(x) => x.clone(),
-        },
-        Err(error_code) => {
-            return Ok(build_error_response(
-                message_id,
-                error_code.into(),
-                "Transaction definition not found.",
-            ));
-        }
+    if let Err(error_code) = get_transaction_definition(req.transaction_id).await {
+        return Ok(build_error_response(
+                      message_id,
+                      ItemsErrorCode::TransactionInvalid.into(),
+                      "Transaction definition not found.",
+                  ));
     };
 
     let secondary_key_uuid = Uuid::parse_str(&req.inventory_source_uuid)?;
-
     // Process the transaction
-    let result = match SYSTEMS.transaction_service.process_player_transaction(
+    let result = match SYSTEMS.transaction_service.process_player_transaction_id(
         SYSTEMS.inventory_service.clone(),
         SYSTEMS.database_service.clone(),
         SYSTEMS.random_service.clone(),
         player_uuid,
         secondary_key_uuid,
-        &transaction,
+        req.transaction_id,
     )
         .await
     {

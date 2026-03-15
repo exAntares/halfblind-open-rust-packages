@@ -39,21 +39,21 @@ impl RequestHandler for MerchantBuyItemHandler {
                 ))
             }
             Some(merchant_component) => {
-                if merchant_component.available_items.iter().len() <= req.item_index as usize{
+                if merchant_component.available_transactions.iter().len() <= req.item_index as usize {
                     Ok(build_error_response(
                         message_id,
                         halfblind_protobuf_network::ErrorCode::InvalidRequest.into(),
                         "Item index is out of bounds",
                     ))
                 } else {
-                    let transaction = merchant_component.available_items[req.item_index as usize].clone();
-                    let result = match SYSTEMS.transaction_service.process_player_transaction(
+                    let transaction = merchant_component.available_transactions[req.item_index as usize].clone();
+                    let result = match SYSTEMS.transaction_service.process_player_transaction_id(
                         SYSTEMS.inventory_service.clone(),
                         SYSTEMS.database_service.clone(),
                         SYSTEMS.random_service.clone(),
                         player_uuid,
                         character_uuid,
-                        &transaction,
+                        transaction.id,
                     )
                         .await
                     {

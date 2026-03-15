@@ -4,8 +4,7 @@ package protobuf_itemdefinition;
 
 import "protobuf-itemdefinition/data/transaction.proto";
 
-message TransactionInstancesRequest {
-}
+message TransactionInstancesRequest {}
 
 message TransactionInstancesResponse {
   repeated TransactionInstance transactions = 1;

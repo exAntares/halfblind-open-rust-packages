@@ -143,32 +143,31 @@ impl RequestHandler for MerchantSellItemHandler {
             }
         }
         let gains_amount = (gains.value.max(0) as u64).saturating_mul(to_sell.amount);
-        let sell_transaction = Transaction {
-            required: vec![],
-            required_negative: vec![],
-            consumed: vec![TransactionItem{
-                item_instance_id: to_sell.item_instance_id.clone(),
-                id_ref: Some(ItemDefinitionRef {
-                    id: to_sell.item_definition_id,
-                }),
-                value: to_sell.amount,
-            }],
-            rewarded: vec![TransactionReward {
-                id_ref: gains.item_id,
-                value: gains_amount,
-                value_min: 0,
-                value_max: 0,
-                duration: 0,
-            }],
-            rewards_random: vec![],
-        };
+        let consumed = vec![TransactionItem{
+            item_instance_id: to_sell.item_instance_id.clone(),
+            id_ref: Some(ItemDefinitionRef {
+                id: to_sell.item_definition_id,
+            }),
+            value: to_sell.amount,
+        }];
+        let rewarded = vec![TransactionReward {
+            id_ref: gains.item_id,
+            value: gains_amount,
+            value_min: 0,
+            value_max: 0,
+            duration: 0,
+        }];
         let transaction_result = match SYSTEMS.transaction_service.process_player_transaction(
             SYSTEMS.inventory_service.clone(),
             SYSTEMS.database_service.clone(),
             SYSTEMS.random_service.clone(),
             player_uuid,
             character_uuid,
-            &sell_transaction,
+            None,
+            None,
+            Some(consumed),
+            Some(rewarded),
+            None,
         ).await {
             Ok(x) => {x}
             Err(e) => {

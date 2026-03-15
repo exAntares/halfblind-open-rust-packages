@@ -1,3 +1,4 @@
+use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use halfblind_database_service::DatabaseService;
@@ -6,7 +7,7 @@ use halfblind_protobuf_network::ErrorCode;
 use halfblind_random::RandomService;
 use halfblind_transactions::{get_transaction_reward_random_value, TransactionRecord, TransactionResult, TransactionService};
 use proto_gen::InventoryItem;
-use protobuf_itemdefinition::{ItemDefinitionRef, ItemsErrorCode, TransactionInstance, TransactionItem, TransactionLootBag, TransactionReward};
+use protobuf_itemdefinition::{convert_transaction_consumed, convert_transaction_required_items, convert_transaction_required_not_items, convert_transaction_rewarded, convert_transaction_rewarded_random, ItemDefinitionRef, ItemsErrorCode, PoolWeightedItemsComponent, TransactionInstance, TransactionItem, TransactionReward};
 use sqlx::{Postgres, Transaction};
 use std::error::Error;
 use std::sync::Arc;
@@ -99,6 +100,34 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         eprintln!("Failed to collect items, they will disappear {:?}", unable_to_collect_items);
     }
 
+    async fn process_player_transaction_id(
+        &self,
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
+        database_service: Arc<dyn DatabaseService + Send + Sync>,
+        random_service: Arc<dyn RandomService + Send + Sync>,
+        player_uuid: Uuid,
+        secondary_uuid: Uuid,
+        transaction_id: u64,
+    ) -> Result<TransactionResult<InventoryItem>, i32> {
+        let random_rewarded_items: Option<Vec<PoolWeightedItemsComponent>> = convert_transaction_rewarded_random(SYSTEMS.item_definition_lookup_service.transaction_rewarded_items_random_component(&transaction_id))
+            .map(|value| value.into_iter().filter_map(|value| {
+                let pool = SYSTEMS.item_definition_lookup_service.pool_weighted_items_component(&value.id)?;
+                Some(pool.as_ref().clone())
+            }).collect::<Vec<_>>());
+        self.process_player_transaction(
+            inventory_service,
+            database_service,
+            random_service,
+            player_uuid,
+            secondary_uuid,
+            convert_transaction_required_items(SYSTEMS.item_definition_lookup_service.transaction_required_items_component(&transaction_id)),
+            convert_transaction_required_not_items(SYSTEMS.item_definition_lookup_service.transaction_required_not_having_items_component(&transaction_id)),
+            convert_transaction_consumed(SYSTEMS.item_definition_lookup_service.transaction_consumed_items_component(&transaction_id)),
+            convert_transaction_rewarded(SYSTEMS.item_definition_lookup_service.transaction_rewarded_items_component(&transaction_id)),
+            random_rewarded_items,
+        ).await
+    }
+
     /// Executes a `TransactionComponent` using the player's inventory
     async fn process_player_transaction(
         &self,
@@ -107,7 +136,11 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         random_service: Arc<dyn RandomService + Send + Sync>,
         player_uuid: Uuid,
         secondary_uuid: Uuid,
-        transaction: &protobuf_itemdefinition::Transaction,
+        required: Option<Vec<TransactionItem>>,
+        required_negative: Option<Vec<TransactionItem>>,
+        consumed: Option<Vec<TransactionItem>>,
+        rewarded: Option<Vec<TransactionReward>>,
+        rewards_random: Option<Vec<protobuf_itemdefinition::PoolWeightedItemsComponent>>,
     ) -> Result<TransactionResult<InventoryItem>, i32> {
         let inventory_arc = match inventory_service.get_inventory(player_uuid, secondary_uuid).await {
             Ok(inventory) => inventory,
@@ -119,15 +152,16 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
 
         { // Acquire read lock on inventory
             let player_inventory = inventory_arc.read().await;
-            if !self.has_enough_item_definitions(&player_inventory, &transaction.required) {
+
+            if let Some(required) = &required && !self.has_enough_item_definitions(&player_inventory, required) {
                 return Err(ItemsErrorCode::TransactionRequirementsNotMet.into());
             }
 
-            if self.has_any_item_definitions(&player_inventory, &transaction.required_negative) {
+            if let Some(required_negative) = required_negative && self.has_any_item_definitions(&player_inventory, &required_negative) {
                 return Err(ItemsErrorCode::TransactionRequirementsNotMet.into());
             }
 
-            if !self.has_enough_item_definitions(&player_inventory, &transaction.consumed) {
+            if let Some(consumed) = &consumed && !self.has_enough_item_definitions(&player_inventory, consumed) {
                 return Err(ItemsErrorCode::NotEnoughItems.into());
             }
         } // release read lock
@@ -137,16 +171,30 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         { // Acquire write lock on inventory
             let mut player_inventory = inventory_arc.write().await;
             // Process consumed items
-            if let Err(e) = consume_items_unchecked(&mut player_inventory, transaction).await {
-                eprintln!("error trying to consume items from player {}", e);
-                return Err(ItemsErrorCode::NotEnoughItems.into());
+            if let Some(consumed) = &consumed {
+                if let Err(e) = consume_items_unchecked(&mut player_inventory, consumed).await {
+                    eprintln!("error trying to consume items from player {}", e);
+                    return Err(ItemsErrorCode::NotEnoughItems.into());
+                }
             }
-            // For items that take 0 seconds (immediate production)
-            let immediate_items = transaction
-                .rewarded
-                .iter()
-                .filter(|x| x.duration <= 0)
-                .collect::<Vec<_>>();
+
+            let mut immediate_items= vec![];
+            let mut delayed_items = vec![];
+            if let Some(rewarded) = &rewarded {
+                // For items that take 0 seconds (immediate production)
+                immediate_items = rewarded
+                    .iter()
+                    .filter(|x| x.duration <= 0)
+                    .collect::<Vec<_>>();
+                delayed_items = rewarded
+                    .iter()
+                    .filter(|x| x.duration > 0)
+                    .collect::<Vec<_>>();
+            }
+            let mut rewards_random_tmp = vec![];
+            if let Some(rewards_random) = rewards_random {
+                rewards_random_tmp = rewards_random.clone();
+            }
             {
                 rewarded_items = match process_rewarded_items_immediate(
                     inventory_service.clone(),
@@ -154,7 +202,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
                     &mut player_inventory,
                     player_uuid,
                     immediate_items,
-                    &transaction.rewards_random,
+                    &rewards_random_tmp,
                 ).await {
                     Ok(x) => {x}
                     Err(e) => {
@@ -163,12 +211,8 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
                     }
                 };
             }
+
             // For items that take more than 0 seconds (delayed production)
-            let delayed_items = transaction
-                .rewarded
-                .iter()
-                .filter(|x| x.duration > 0)
-                .collect::<Vec<_>>();
             if !delayed_items.is_empty()
             {  // Acquire write lock on the database
                 let mut tx = database_service.get_db_pool().begin().await.ok().unwrap();
@@ -212,7 +256,7 @@ async fn process_rewarded_items_immediate(
     inventory_items: &mut Vec<InventoryItem>,
     player_uuid: Uuid,
     rewards: Vec<&TransactionReward>,
-    rewards_random: &Vec<TransactionLootBag>,
+    rewards_random: &Vec<PoolWeightedItemsComponent>,
 ) -> Result<Vec<InventoryItem>, Box<dyn Error + Send + Sync>> {
     let mut reward_inventory_items = rewards
         .iter()
@@ -331,12 +375,12 @@ async fn process_rewarded_items_delayed(
 
 async fn consume_items_unchecked(
     inventory_items: &mut Vec<InventoryItem>,
-    transaction: &protobuf_itemdefinition::protobuf_itemdefinition::Transaction,
+    consumed: &Vec<TransactionItem>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    if transaction.consumed.is_empty() {
+    if consumed.is_empty() {
         return Ok(());
     }
-    consume_items_from_inventory(inventory_items, &transaction.consumed);
+    consume_items_from_inventory(inventory_items, consumed);
     Ok(())
 }
 

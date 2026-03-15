@@ -1102,7 +1102,7 @@ pub struct QuestDefinitionComponent {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MerchantAvailableItemsComponent {
     #[prost(message, repeated, tag="1")]
-    pub available_items: ::prost::alloc::vec::Vec<protobuf_itemdefinition::Transaction>,
+    pub available_transactions: ::prost::alloc::vec::Vec<protobuf_itemdefinition::ItemDefinitionRef>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MapComponent {

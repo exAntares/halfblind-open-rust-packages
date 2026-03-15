@@ -37,6 +37,20 @@ pub trait TransactionService<T> {
         random_service: Arc<dyn RandomService + Send + Sync>,
         player_uuid: Uuid,
         secondary_uuid: Uuid,
-        transaction: &protobuf_itemdefinition::Transaction,
+        required: Option<Vec<TransactionItem>>,
+        required_negative: Option<Vec<TransactionItem>>,
+        consumed: Option<Vec<TransactionItem>>,
+        rewarded: Option<Vec<TransactionReward>>,
+        rewards_random: Option<Vec<protobuf_itemdefinition::PoolWeightedItemsComponent>>,
+    ) -> Result<TransactionResult<T>, i32>;
+
+    async fn process_player_transaction_id(
+        &self,
+        inventory_service: Arc<dyn InventoryService<T> + Send + Sync>,
+        database_service: Arc<dyn DatabaseService + Send + Sync>,
+        random_service: Arc<dyn RandomService + Send + Sync>,
+        player_uuid: Uuid,
+        secondary_uuid: Uuid,
+        transaction_id: u64,
     ) -> Result<TransactionResult<T>, i32>;
 }

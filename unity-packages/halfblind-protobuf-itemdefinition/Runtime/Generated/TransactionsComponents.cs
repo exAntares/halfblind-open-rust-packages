@@ -27,13 +27,29 @@ namespace ProtobufItemdefinition {
             "Cj9wcm90b2J1Zi1pdGVtZGVmaW5pdGlvbi9iYWxhbmNpbmcvdHJhbnNhY3Rp",
             "b25zX2NvbXBvbmVudHMucHJvdG8SF3Byb3RvYnVmX2l0ZW1kZWZpbml0aW9u",
             "Gi5wcm90b2J1Zi1pdGVtZGVmaW5pdGlvbi9kYXRhL3RyYW5zYWN0aW9uLnBy",
-            "b3RvIlEKFFRyYW5zYWN0aW9uQ29tcG9uZW50EjkKC3RyYW5zYWN0aW9uGAEg",
-            "ASgLMiQucHJvdG9idWZfaXRlbWRlZmluaXRpb24uVHJhbnNhY3Rpb25iBnBy",
-            "b3RvMw=="));
+            "b3RvGjJwcm90b2J1Zi1pdGVtZGVmaW5pdGlvbi9kYXRhL2l0ZW1fZGVmaW5p",
+            "dGlvbi5wcm90byIWChRUcmFuc2FjdGlvbkNvbXBvbmVudCJfCiFUcmFuc2Fj",
+            "dGlvblJlcXVpcmVkSXRlbXNDb21wb25lbnQSOgoIcmVxdWlyZWQYASADKAsy",
+            "KC5wcm90b2J1Zl9pdGVtZGVmaW5pdGlvbi5UcmFuc2FjdGlvbkl0ZW0icwoq",
+            "VHJhbnNhY3Rpb25SZXF1aXJlZE5vdEhhdmluZ0l0ZW1zQ29tcG9uZW50EkUK",
+            "E3JlcXVpcmVkX25vdF9oYXZpbmcYASADKAsyKC5wcm90b2J1Zl9pdGVtZGVm",
+            "aW5pdGlvbi5UcmFuc2FjdGlvbkl0ZW0iXwohVHJhbnNhY3Rpb25Db25zdW1l",
+            "ZEl0ZW1zQ29tcG9uZW50EjoKCGNvbnN1bWVkGAEgAygLMigucHJvdG9idWZf",
+            "aXRlbWRlZmluaXRpb24uVHJhbnNhY3Rpb25JdGVtImEKIVRyYW5zYWN0aW9u",
+            "UmV3YXJkZWRJdGVtc0NvbXBvbmVudBI8CghyZXdhcmRlZBgBIAMoCzIqLnBy",
+            "b3RvYnVmX2l0ZW1kZWZpbml0aW9uLlRyYW5zYWN0aW9uUmV3YXJkImsKJ1Ry",
+            "YW5zYWN0aW9uUmV3YXJkZWRJdGVtc1JhbmRvbUNvbXBvbmVudBJACgxyZXdh",
+            "cmRfcG9vbHMYASADKAsyKi5wcm90b2J1Zl9pdGVtZGVmaW5pdGlvbi5JdGVt",
+            "RGVmaW5pdGlvblJlZmIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
-          new pbr::FileDescriptor[] { global::ProtobufItemdefinition.TransactionReflection.Descriptor, },
+          new pbr::FileDescriptor[] { global::ProtobufItemdefinition.TransactionReflection.Descriptor, global::ProtobufItemdefinition.ItemDefinitionReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufItemdefinition.TransactionComponent), global::ProtobufItemdefinition.TransactionComponent.Parser, new[]{ "Transaction" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufItemdefinition.TransactionComponent), global::ProtobufItemdefinition.TransactionComponent.Parser, null, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufItemdefinition.TransactionRequiredItemsComponent), global::ProtobufItemdefinition.TransactionRequiredItemsComponent.Parser, new[]{ "Required" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufItemdefinition.TransactionRequiredNotHavingItemsComponent), global::ProtobufItemdefinition.TransactionRequiredNotHavingItemsComponent.Parser, new[]{ "RequiredNotHaving" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufItemdefinition.TransactionConsumedItemsComponent), global::ProtobufItemdefinition.TransactionConsumedItemsComponent.Parser, new[]{ "Consumed" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufItemdefinition.TransactionRewardedItemsComponent), global::ProtobufItemdefinition.TransactionRewardedItemsComponent.Parser, new[]{ "Rewarded" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufItemdefinition.TransactionRewardedItemsRandomComponent), global::ProtobufItemdefinition.TransactionRewardedItemsRandomComponent.Parser, new[]{ "RewardPools" }, null, null, null, null)
           }));
     }
     #endregion
@@ -65,24 +81,12 @@ namespace ProtobufItemdefinition {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public TransactionComponent(TransactionComponent other) : this() {
-      transaction_ = other.transaction_ != null ? other.transaction_.Clone() : null;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public TransactionComponent Clone() {
       return new TransactionComponent(this);
-    }
-
-    /// <summary>Field number for the "transaction" field.</summary>
-    public const int TransactionFieldNumber = 1;
-    private global::ProtobufItemdefinition.Transaction transaction_;
-    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::ProtobufItemdefinition.Transaction Transaction {
-      get { return transaction_; }
-      set {
-        transaction_ = value;
-      }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -98,14 +102,12 @@ namespace ProtobufItemdefinition {
       if (ReferenceEquals(other, this)) {
         return true;
       }
-      if (!object.Equals(Transaction, other.Transaction)) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public override int GetHashCode() {
       int hash = 1;
-      if (transaction_ != null) hash ^= Transaction.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -119,10 +121,6 @@ namespace ProtobufItemdefinition {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public void WriteTo(pb::CodedOutputStream output) {
-      if (transaction_ != null) {
-        output.WriteRawTag(10);
-        output.WriteMessage(Transaction);
-      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -131,9 +129,6 @@ namespace ProtobufItemdefinition {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int CalculateSize() {
       int size = 0;
-      if (transaction_ != null) {
-        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Transaction);
-      }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
       }
@@ -144,12 +139,6 @@ namespace ProtobufItemdefinition {
     public void MergeFrom(TransactionComponent other) {
       if (other == null) {
         return;
-      }
-      if (other.transaction_ != null) {
-        if (transaction_ == null) {
-          Transaction = new global::ProtobufItemdefinition.Transaction();
-        }
-        Transaction.MergeFrom(other.Transaction);
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -162,11 +151,612 @@ namespace ProtobufItemdefinition {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
+        }
+      }
+    }
+
+  }
+
+  public sealed partial class TransactionRequiredItemsComponent : pb::IMessage<TransactionRequiredItemsComponent> {
+    private static readonly pb::MessageParser<TransactionRequiredItemsComponent> _parser = new pb::MessageParser<TransactionRequiredItemsComponent>(() => new TransactionRequiredItemsComponent());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<TransactionRequiredItemsComponent> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::ProtobufItemdefinition.TransactionsComponentsReflection.Descriptor.MessageTypes[1]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRequiredItemsComponent() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRequiredItemsComponent(TransactionRequiredItemsComponent other) : this() {
+      required_ = other.required_.Clone();
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRequiredItemsComponent Clone() {
+      return new TransactionRequiredItemsComponent(this);
+    }
+
+    /// <summary>Field number for the "required" field.</summary>
+    public const int RequiredFieldNumber = 1;
+    private static readonly pb::FieldCodec<global::ProtobufItemdefinition.TransactionItem> _repeated_required_codec
+        = pb::FieldCodec.ForMessage(10, global::ProtobufItemdefinition.TransactionItem.Parser);
+    private readonly pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem> required_ = new pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem>();
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem> Required {
+      get { return required_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as TransactionRequiredItemsComponent);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(TransactionRequiredItemsComponent other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if(!required_.Equals(other.required_)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      hash ^= required_.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      required_.WriteTo(output, _repeated_required_codec);
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      size += required_.CalculateSize(_repeated_required_codec);
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(TransactionRequiredItemsComponent other) {
+      if (other == null) {
+        return;
+      }
+      required_.Add(other.required_);
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
           case 10: {
-            if (transaction_ == null) {
-              Transaction = new global::ProtobufItemdefinition.Transaction();
-            }
-            input.ReadMessage(Transaction);
+            required_.AddEntriesFrom(input, _repeated_required_codec);
+            break;
+          }
+        }
+      }
+    }
+
+  }
+
+  public sealed partial class TransactionRequiredNotHavingItemsComponent : pb::IMessage<TransactionRequiredNotHavingItemsComponent> {
+    private static readonly pb::MessageParser<TransactionRequiredNotHavingItemsComponent> _parser = new pb::MessageParser<TransactionRequiredNotHavingItemsComponent>(() => new TransactionRequiredNotHavingItemsComponent());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<TransactionRequiredNotHavingItemsComponent> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::ProtobufItemdefinition.TransactionsComponentsReflection.Descriptor.MessageTypes[2]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRequiredNotHavingItemsComponent() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRequiredNotHavingItemsComponent(TransactionRequiredNotHavingItemsComponent other) : this() {
+      requiredNotHaving_ = other.requiredNotHaving_.Clone();
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRequiredNotHavingItemsComponent Clone() {
+      return new TransactionRequiredNotHavingItemsComponent(this);
+    }
+
+    /// <summary>Field number for the "required_not_having" field.</summary>
+    public const int RequiredNotHavingFieldNumber = 1;
+    private static readonly pb::FieldCodec<global::ProtobufItemdefinition.TransactionItem> _repeated_requiredNotHaving_codec
+        = pb::FieldCodec.ForMessage(10, global::ProtobufItemdefinition.TransactionItem.Parser);
+    private readonly pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem> requiredNotHaving_ = new pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem>();
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem> RequiredNotHaving {
+      get { return requiredNotHaving_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as TransactionRequiredNotHavingItemsComponent);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(TransactionRequiredNotHavingItemsComponent other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if(!requiredNotHaving_.Equals(other.requiredNotHaving_)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      hash ^= requiredNotHaving_.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      requiredNotHaving_.WriteTo(output, _repeated_requiredNotHaving_codec);
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      size += requiredNotHaving_.CalculateSize(_repeated_requiredNotHaving_codec);
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(TransactionRequiredNotHavingItemsComponent other) {
+      if (other == null) {
+        return;
+      }
+      requiredNotHaving_.Add(other.requiredNotHaving_);
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            requiredNotHaving_.AddEntriesFrom(input, _repeated_requiredNotHaving_codec);
+            break;
+          }
+        }
+      }
+    }
+
+  }
+
+  public sealed partial class TransactionConsumedItemsComponent : pb::IMessage<TransactionConsumedItemsComponent> {
+    private static readonly pb::MessageParser<TransactionConsumedItemsComponent> _parser = new pb::MessageParser<TransactionConsumedItemsComponent>(() => new TransactionConsumedItemsComponent());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<TransactionConsumedItemsComponent> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::ProtobufItemdefinition.TransactionsComponentsReflection.Descriptor.MessageTypes[3]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionConsumedItemsComponent() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionConsumedItemsComponent(TransactionConsumedItemsComponent other) : this() {
+      consumed_ = other.consumed_.Clone();
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionConsumedItemsComponent Clone() {
+      return new TransactionConsumedItemsComponent(this);
+    }
+
+    /// <summary>Field number for the "consumed" field.</summary>
+    public const int ConsumedFieldNumber = 1;
+    private static readonly pb::FieldCodec<global::ProtobufItemdefinition.TransactionItem> _repeated_consumed_codec
+        = pb::FieldCodec.ForMessage(10, global::ProtobufItemdefinition.TransactionItem.Parser);
+    private readonly pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem> consumed_ = new pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem>();
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public pbc::RepeatedField<global::ProtobufItemdefinition.TransactionItem> Consumed {
+      get { return consumed_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as TransactionConsumedItemsComponent);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(TransactionConsumedItemsComponent other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if(!consumed_.Equals(other.consumed_)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      hash ^= consumed_.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      consumed_.WriteTo(output, _repeated_consumed_codec);
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      size += consumed_.CalculateSize(_repeated_consumed_codec);
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(TransactionConsumedItemsComponent other) {
+      if (other == null) {
+        return;
+      }
+      consumed_.Add(other.consumed_);
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            consumed_.AddEntriesFrom(input, _repeated_consumed_codec);
+            break;
+          }
+        }
+      }
+    }
+
+  }
+
+  public sealed partial class TransactionRewardedItemsComponent : pb::IMessage<TransactionRewardedItemsComponent> {
+    private static readonly pb::MessageParser<TransactionRewardedItemsComponent> _parser = new pb::MessageParser<TransactionRewardedItemsComponent>(() => new TransactionRewardedItemsComponent());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<TransactionRewardedItemsComponent> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::ProtobufItemdefinition.TransactionsComponentsReflection.Descriptor.MessageTypes[4]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRewardedItemsComponent() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRewardedItemsComponent(TransactionRewardedItemsComponent other) : this() {
+      rewarded_ = other.rewarded_.Clone();
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRewardedItemsComponent Clone() {
+      return new TransactionRewardedItemsComponent(this);
+    }
+
+    /// <summary>Field number for the "rewarded" field.</summary>
+    public const int RewardedFieldNumber = 1;
+    private static readonly pb::FieldCodec<global::ProtobufItemdefinition.TransactionReward> _repeated_rewarded_codec
+        = pb::FieldCodec.ForMessage(10, global::ProtobufItemdefinition.TransactionReward.Parser);
+    private readonly pbc::RepeatedField<global::ProtobufItemdefinition.TransactionReward> rewarded_ = new pbc::RepeatedField<global::ProtobufItemdefinition.TransactionReward>();
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public pbc::RepeatedField<global::ProtobufItemdefinition.TransactionReward> Rewarded {
+      get { return rewarded_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as TransactionRewardedItemsComponent);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(TransactionRewardedItemsComponent other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if(!rewarded_.Equals(other.rewarded_)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      hash ^= rewarded_.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      rewarded_.WriteTo(output, _repeated_rewarded_codec);
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      size += rewarded_.CalculateSize(_repeated_rewarded_codec);
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(TransactionRewardedItemsComponent other) {
+      if (other == null) {
+        return;
+      }
+      rewarded_.Add(other.rewarded_);
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            rewarded_.AddEntriesFrom(input, _repeated_rewarded_codec);
+            break;
+          }
+        }
+      }
+    }
+
+  }
+
+  public sealed partial class TransactionRewardedItemsRandomComponent : pb::IMessage<TransactionRewardedItemsRandomComponent> {
+    private static readonly pb::MessageParser<TransactionRewardedItemsRandomComponent> _parser = new pb::MessageParser<TransactionRewardedItemsRandomComponent>(() => new TransactionRewardedItemsRandomComponent());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<TransactionRewardedItemsRandomComponent> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::ProtobufItemdefinition.TransactionsComponentsReflection.Descriptor.MessageTypes[5]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRewardedItemsRandomComponent() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRewardedItemsRandomComponent(TransactionRewardedItemsRandomComponent other) : this() {
+      rewardPools_ = other.rewardPools_.Clone();
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public TransactionRewardedItemsRandomComponent Clone() {
+      return new TransactionRewardedItemsRandomComponent(this);
+    }
+
+    /// <summary>Field number for the "reward_pools" field.</summary>
+    public const int RewardPoolsFieldNumber = 1;
+    private static readonly pb::FieldCodec<global::ProtobufItemdefinition.ItemDefinitionRef> _repeated_rewardPools_codec
+        = pb::FieldCodec.ForMessage(10, global::ProtobufItemdefinition.ItemDefinitionRef.Parser);
+    private readonly pbc::RepeatedField<global::ProtobufItemdefinition.ItemDefinitionRef> rewardPools_ = new pbc::RepeatedField<global::ProtobufItemdefinition.ItemDefinitionRef>();
+    /// <summary>
+    /// Chose 1 item from each bag
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public pbc::RepeatedField<global::ProtobufItemdefinition.ItemDefinitionRef> RewardPools {
+      get { return rewardPools_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as TransactionRewardedItemsRandomComponent);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(TransactionRewardedItemsRandomComponent other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if(!rewardPools_.Equals(other.rewardPools_)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      hash ^= rewardPools_.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      rewardPools_.WriteTo(output, _repeated_rewardPools_codec);
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      size += rewardPools_.CalculateSize(_repeated_rewardPools_codec);
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(TransactionRewardedItemsRandomComponent other) {
+      if (other == null) {
+        return;
+      }
+      rewardPools_.Add(other.rewardPools_);
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            rewardPools_.AddEntriesFrom(input, _repeated_rewardPools_codec);
             break;
           }
         }
