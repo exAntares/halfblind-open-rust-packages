@@ -2,9 +2,7 @@ use crate::characters::characters_service::CharactersService;
 use crate::characters::models::DatabaseCharacter;
 use crate::inventory::inventory_item_utils;
 use crate::inventory::inventory_item_utils::try_aggregate_inventories;
-use crate::item_definitions::IsCharacterLevelComponentLookup;
-use crate::item_definitions::IsCharacterXpComponentLookup;
-use crate::item_definitions::LevelRequiredExperienceComponentLookup;
+use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_database_service::DatabaseService;
@@ -29,7 +27,7 @@ impl CharactersService for CharactersServiceImpl {
         &self,
         player_uuid: Uuid,
         character_definition_id: i64,
-        character_definition: CharacterDefinitionComponent,
+        character_definition: Arc<CharacterDefinitionComponent>,
         character_name: String,
     ) -> Result<Arc<RwLock<DatabaseCharacter>>, Box<dyn Error + Send + Sync>> {
         let db_pool = self.database_service.get_db_pool();
@@ -198,7 +196,7 @@ impl CharactersService for CharactersServiceImpl {
             }
             Some(index) => {index}
         };
-        let level_definition_id = IsCharacterLevelComponentLookup.iter().last().unwrap().0;
+        let level_definition_id = SYSTEMS.item_definition_lookup_service.is_character_level_component_all().iter().last().unwrap().0;
         let level_inventory_item_idx = match inventory.iter().position(|x| x.item_definition_id == *level_definition_id) {
             None => {
                 return Err("Character does not have a level item".into());
@@ -263,7 +261,7 @@ impl CharactersServiceImpl {
     }
 
     pub fn get_xp_item_definition_id(&self) -> u64 {
-        IsCharacterXpComponentLookup
+        SYSTEMS.item_definition_lookup_service.is_character_xp_component_all()
             .iter()
             .last()
             .unwrap()
@@ -271,8 +269,8 @@ impl CharactersServiceImpl {
             .clone()
     }
 
-    pub fn get_xp_required(&self) -> LevelRequiredExperienceComponent {
-        LevelRequiredExperienceComponentLookup
+    pub fn get_xp_required(&self) -> Arc<LevelRequiredExperienceComponent> {
+        SYSTEMS.item_definition_lookup_service.level_required_experience_component_all()
             .iter()
             .last()
             .unwrap()

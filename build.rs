@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use prost::Message;
-use protobuf_itemdefinition::{ItemDefinition, ItemDefinitionsResponse};
+use protobuf_itemdefinition::build_utils::generate_item_definition_service;
+use protobuf_itemdefinition::ItemDefinitionsResponse;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
@@ -14,19 +15,9 @@ fn main() {
     // Tell Cargo to rerun the build script if ItemDefinitions.bytes changes
     println!("cargo:rerun-if-changed=data/ItemDefinitions.bytes");
 
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("component_lookups.rs");
+    let proto_path = "proto-gen/src/protobuf_game.rs";
+    generate_item_definition_service(ITEM_DEFINITIONS_RESPONSE_DEFAULT.definitions.as_slice(), proto_path);
 
-    // Discover all unique component types
-    let component_types =
-        discover_component_types(ITEM_DEFINITIONS_RESPONSE_DEFAULT.definitions.as_slice());
-
-    // Generate the component lookups
-    let generated_code = generate_component_lookups(&component_types);
-
-    // Write the generated code to OUT_DIR
-    fs::write(&dest_path, generated_code).expect("Failed to write component_lookups.rs");
-    
     generate_network_handlers_file();
 }
 
@@ -126,110 +117,4 @@ fn get_all_src_modules() -> Vec<String> {
         }
     }
     modules
-}
-
-fn generate_component_lookups(component_types: &HashSet<String>) -> String {
-    let mut code = String::new();
-    for component_type in component_types {
-        code.push_str(&format!("// {}\n", component_type));
-    }
-    code.push_str("use std::collections::HashMap;\n");
-    code.push_str("use once_cell::sync::Lazy;\n");
-    code.push_str("use proto_gen::*;\n");
-    code.push_str("use prost::Message;\n");
-    code.push_str("use ::protobuf_itemdefinition::*;\n");
-    code.push_str("\n");
-    code.push_str("const ITEM_DEFS_BYTES: &[u8] = include_bytes!(\"../../../../../data/ItemDefinitions.bytes\");\n\n");
-
-    code.push_str(
-        "static ITEM_DEFINITIONS_RESPONSE_DEFAULT: Lazy<ItemDefinitionsResponse> =\
-     Lazy::new(|| ItemDefinitionsResponse::decode(ITEM_DEFS_BYTES).unwrap());\n\n",
-    );
-
-    // Generate hashmaps for each component type
-    for component_type in component_types {
-        let static_name = component_type_to_static_name(component_type);
-        code.push_str(&generate_component_lookup(
-            component_type,
-            static_name,
-            ITEM_DEFINITIONS_RESPONSE_DEFAULT.definitions.as_slice(),
-        ));
-    }
-    code
-}
-
-fn discover_component_types(
-    definitions: &[ItemDefinition],
-) -> HashSet<String> {
-    let mut component_types = HashSet::new();
-
-    for def in definitions {
-        for component in &def.any_components {
-            // Extract the component type name from the type_url
-            if let Some(type_name) = extract_component_type_name(&component.type_url) {
-                component_types.insert(type_name);
-            }
-        }
-    }
-
-    let proto_path = "proto-gen/src/protobuf_game.rs";
-    let proto_components = get_all_proto_ending_with(proto_path,"Component");
-    for proto_component in proto_components {
-        if !component_types.contains(&proto_component) {
-            component_types.insert(format!("proto_balancing::{}",proto_component));
-        }
-    }
-
-    component_types
-}
-
-fn extract_component_type_name(type_url: &str) -> Option<String> {
-    // Extract the last part of the type URL (e.g., "CharacterDefinitionComponent" from "type.googleapis.com/CharacterDefinitionComponent")
-    type_url.split('/').last().map(|s| s.replace('.', "::"))
-}
-
-fn generate_component_lookup(
-    component_type: &str,
-    static_name: String,
-    definitions: &[ItemDefinition],
-) -> String {
-    let mut code = String::new();
-    let plain_name : String = component_type.split("::").last().unwrap().to_string();
-    code.push_str(&format!(
-        "pub static {}: Lazy<HashMap<u64, {}>> = Lazy::new(|| {{\n",
-        static_name, plain_name
-    ));
-    code.push_str("    let mut map = HashMap::new();\n");
-
-    // Add components to the map
-    for (def_index, def) in definitions.iter().enumerate() {
-        for (component_index, component) in def.any_components.iter().enumerate() {
-            let component_type_url =
-                format!("type.googleapis.com/{}", component_type.replace("::", "."));
-            if component.type_url.contains(component_type_url.as_str()) {
-                code.push_str("     {\n");
-                code.push_str(&format!("          let component = &ITEM_DEFINITIONS_RESPONSE_DEFAULT.definitions[{}].any_components[{}];\n", def_index, component_index));
-                code.push_str(&format!(
-                    "          if let Ok(decoded_component) = {}::decode(component.value.as_slice()) {{\n",
-                    plain_name
-                ));
-                code.push_str(&format!(
-                    "          map.insert({}, decoded_component);\n",
-                    def.id
-                ));
-                code.push_str("          }\n");
-                code.push_str("     }\n");
-            }
-        }
-    }
-
-    code.push_str("    map\n");
-    code.push_str("});\n\n");
-    code
-}
-
-fn component_type_to_static_name(component_type: &str) -> String {
-    // Convert CamelCase to SCREAMING_SNAKE_CASE and add _LOOKUP suffix
-    let result = component_type.split("::").last().unwrap().to_string();
-    format!("{}Lookup", result)
 }

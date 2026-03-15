@@ -1,5 +1,4 @@
 use crate::inventory::inventory_item_utils::filter_visible_inventory;
-use crate::item_definitions::{SkillComponentLookup, TransactionComponentLookup};
 use crate::map::models::MapAction::{AddStatsToCharacter, MoveTo, PickupItem, SpawnSkill};
 use crate::map::models::MapActionTimed;
 use crate::systems::systems::SYSTEMS;
@@ -100,7 +99,7 @@ impl RequestHandler for MapActionHandler {
             }
             MapAction::UsableSkill(skill_request) => {
                 if let Some(skill_comp) =
-                    SkillComponentLookup.get(&skill_request.skill_definition_id)
+                    SYSTEMS.item_definition_lookup_service.skill_component(&skill_request.skill_definition_id)
                 {
                     let character_inventory_guard = match SYSTEMS.inventory_service.get_inventory(player_uuid, character_uuid).await {
                         Ok(x) => {x}
@@ -178,7 +177,7 @@ impl RequestHandler for MapActionHandler {
                     ));
                 }
                 let teleport = game_map.map_component.teleporter[index];
-                let transaction = match TransactionComponentLookup.get(&teleport.transaction_id) {
+                let transaction = match SYSTEMS.item_definition_lookup_service.transaction_component(&teleport.transaction_id) {
                     None => {
                         return Ok(build_error_response(
                             message_id,
@@ -194,7 +193,7 @@ impl RequestHandler for MapActionHandler {
                                 "Transaction does not exist",
                             ));
                         }
-                        Some(x) => x,
+                        Some(x) => x.clone(),
                     },
                 };
                 match SYSTEMS.transaction_service.process_player_transaction(

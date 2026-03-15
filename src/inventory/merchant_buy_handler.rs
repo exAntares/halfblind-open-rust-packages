@@ -1,5 +1,4 @@
 use crate::handlers::utils;
-use crate::item_definitions::MerchantAvailableItemsComponentLookup;
 use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
@@ -31,7 +30,7 @@ impl RequestHandler for MerchantBuyItemHandler {
             Err(response) => return Ok(response),
         };
 
-        match MerchantAvailableItemsComponentLookup.get(&req.merchant_definition_id) {
+        match SYSTEMS.item_definition_lookup_service.merchant_available_items_component(&req.merchant_definition_id) {
             None => {
                 Ok(build_error_response(
                     message_id,

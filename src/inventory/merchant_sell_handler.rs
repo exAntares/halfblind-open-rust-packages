@@ -1,8 +1,4 @@
 use crate::handlers::utils;
-use crate::item_definitions::DefaultSellValueComponentLookup;
-use crate::item_definitions::InventoryHiddenItemComponentLookup;
-use crate::item_definitions::IsStackableComponentLookup;
-use crate::item_definitions::MerchantAvailableItemsComponentLookup;
 use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
@@ -41,7 +37,7 @@ impl RequestHandler for MerchantSellItemHandler {
             Err(response) => return Ok(response),
         };
 
-        let merchant_comp = match MerchantAvailableItemsComponentLookup.get(&req.merchant_definition_id) {
+        let merchant_comp = match SYSTEMS.item_definition_lookup_service.merchant_available_items_component(&req.merchant_definition_id) {
             None => {
                 return Ok(build_error_response(
                     message_id,
@@ -68,7 +64,7 @@ impl RequestHandler for MerchantSellItemHandler {
                 "Cannot sell equipped items",
             ));
         }
-        if let Some(hidden_comp) = InventoryHiddenItemComponentLookup.get(&to_sell.item_definition_id) {
+        if let Some(hidden_comp) = SYSTEMS.item_definition_lookup_service.inventory_hidden_item_component(&to_sell.item_definition_id) {
             return Ok(build_error_response(
                 message_id,
                 GameErrorCode::UserCantSellItem.into(),
@@ -77,7 +73,7 @@ impl RequestHandler for MerchantSellItemHandler {
         }
 
         // TODO: some merchants may buy items for a different value check that first
-        let (to_sell, gains) = match DefaultSellValueComponentLookup.get(&to_sell.item_definition_id) {
+        let (to_sell, gains) = match SYSTEMS.item_definition_lookup_service.default_sell_value_component(&to_sell.item_definition_id) {
             None => {
                 return Ok(build_error_response(
                     message_id,
@@ -103,7 +99,7 @@ impl RequestHandler for MerchantSellItemHandler {
                 ));
             }
         };
-        match IsStackableComponentLookup.get(&to_sell.item_definition_id) {
+        match SYSTEMS.item_definition_lookup_service.is_stackable_component(&to_sell.item_definition_id) {
             None => {
                 // Non-stackable item check for the instance id
                 match inventory_lock.read().await.iter().find(|x| x.item_instance_id == to_sell.item_instance_id) {

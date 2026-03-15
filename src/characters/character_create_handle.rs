@@ -1,8 +1,5 @@
 use crate::inventory::inventory_item_utils;
-use crate::item_definitions::{
-    CharacterDefinitionComponentLookup, InventoryInitialValueCharacterComponentLookup,
-    IsCurrentCharacterSlotCountComponentLookup,
-};
+use crate::item_definitions::CHARACTER_DEFINITION_COMPONENT_LOOKUP;
 use crate::systems::systems::{Systems, SYSTEMS};
 use async_trait::async_trait;
 use halfblind_network::*;
@@ -34,7 +31,8 @@ impl RequestHandler for CharacterCreateHandler {
         let req = CharacterCreateRequest::decode(payload)?;
         let character_name = req.character_name.clone();
         let character_definition_id = req.character_definition_id;
-        let character_slot_count_id = match IsCurrentCharacterSlotCountComponentLookup.iter().last()
+        let character_slot_count_id = match SYSTEMS.item_definition_lookup_service.is_current_character_slot_count_component_all()
+            .iter().last()
         {
             None => {
                 return Ok(build_error_response(
@@ -75,7 +73,7 @@ impl RequestHandler for CharacterCreateHandler {
         }
 
         let character_definition =
-            match CharacterDefinitionComponentLookup.get(&character_definition_id) {
+            match CHARACTER_DEFINITION_COMPONENT_LOOKUP.get(&character_definition_id) {
                 None => {
                     return Ok(build_error_response(
                         message_id,
@@ -163,13 +161,9 @@ pub async fn add_default_inventory_to_character(
     initial_inventory_from_definition: Vec<InventoryItem>,
     systems: Arc<Systems>,
 ) -> Result<Vec<InventoryItem>, Box<dyn Error + Send + Sync>> {
-    let inventory_items_components = InventoryInitialValueCharacterComponentLookup
-        .iter()
-        .collect::<Vec<_>>();
-
     // Convert to InventoryItem protobuf messages using generate_inventory_item_for_player
     let mut inventory_items = Vec::new();
-    for (item_id, component) in inventory_items_components {
+    for (item_id, component) in SYSTEMS.item_definition_lookup_service.inventory_initial_value_character_component_all() {
         let generated_item = inventory_item_utils::generate_inventory_item_for_player(
             systems.items_definitions_service.clone(),
             systems.random_service.clone(),

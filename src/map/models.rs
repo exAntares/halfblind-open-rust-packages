@@ -5,6 +5,7 @@ use proto_gen::{CharacterStat, DamageType, InventoryItem, Position};
 use proto_gen::{MobComponent, SkillComponent};
 use rand::rngs::SmallRng;
 use std::collections::HashSet;
+use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -51,13 +52,13 @@ pub enum MapAction {
     },
     SpawnMob {
         mob_definition_id: u64,
-        mob_component: MobComponent,
+        mob_component: Arc<MobComponent>,
         target_position: Position,
     },
     SpawnSkill {
         character_owner_uuid: Uuid,
         skill_definition_id: u64,
-        skill_component: SkillComponent,
+        skill_component: Arc<SkillComponent>,
         target_position: Position,
         direction: Position,
     },
@@ -101,7 +102,7 @@ pub struct DamageEntity {
 pub struct StatusInstance {
     pub definition_id: u64,
     pub lifetime: f64,
-    pub status_component: proto_gen::StatusOnHitComponent,
+    pub status_component: Arc<proto_gen::StatusOnHitComponent>,
 }
 
 #[derive(Clone, Debug)]
@@ -116,7 +117,7 @@ pub enum MapEntities {
     },
     MobCharacter {
         mob_definition_id: u64,
-        mob_component: MobComponent,
+        mob_component: Arc<MobComponent>,
         position: Position,
         current_hp: u64,
         damage_dealers: HashSet<Uuid>,
@@ -125,7 +126,7 @@ pub enum MapEntities {
     Skill {
         owner_uuid: Uuid,
         skill_definition_id: u64,
-        skill_component: SkillComponent,
+        skill_component: Arc<SkillComponent>,
         damage_heal_per_tick: f64,
         is_critical_hit: bool,
         position: Position,

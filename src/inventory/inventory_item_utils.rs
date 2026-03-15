@@ -1,4 +1,4 @@
-use crate::item_definitions::{InventoryHiddenItemComponentLookup, IsCharacterLevelComponentLookup, IsStackableComponentLookup, MaximumVisibleInventoryCapacitySingletonComponentLookup};
+use crate::item_definitions::INVENTORY_HIDDEN_ITEM_COMPONENT_LOOKUP;
 use crate::systems::systems::SYSTEMS;
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_random::RandomService;
@@ -51,7 +51,7 @@ pub fn generate_inventory_item_for_player(
 
     let _item_definition = _item_definition.unwrap();
 
-    if IsStackableComponentLookup.get(&definition_id).is_some() {
+    if SYSTEMS.item_definition_lookup_service.is_stackable_component(&definition_id).is_some() {
         return InventoryItem {
             item_instance_id: Uuid::new_v4().to_string(),
             item_definition_id: definition_id,
@@ -113,7 +113,7 @@ pub fn try_aggregate_inventories(
 ) -> Vec<InventoryItem> {
     let mut unable_to_collect_items = Vec::new();
     for to_add in source {
-        if let Some(_stackable) = IsStackableComponentLookup.get(&to_add.item_definition_id) {
+        if let Some(_stackable) = SYSTEMS.item_definition_lookup_service.is_stackable_component(&to_add.item_definition_id) {
             if let Some(existing) = target
                 .iter_mut()
                 .find(|x| x.item_definition_id == to_add.item_definition_id)
@@ -146,7 +146,7 @@ pub fn try_aggregate_inventories(
 ///  - filter_inventory_items_by_component(&items, &InventoryHiddenItemComponentLookup);
 pub fn filter_inventory_items_by_component<M>(
     items: &[InventoryItem],
-    lookup: &Lazy<HashMap<u64, M>>,
+    lookup: &Lazy<HashMap<u64, Arc<M>>>,
 ) -> Vec<InventoryItem>
 where
     M: Clone + Message + Default + Send + Sync + 'static,
@@ -164,7 +164,8 @@ pub fn filter_visible_inventory(
     items: &[InventoryItem]
 ) -> Vec<&InventoryItem> {
     let mut result = filter_equipped_or_unequipped_items(items, true);
-    let level_item_definition_id = IsCharacterLevelComponentLookup.iter().last().unwrap().0;
+    let level_item_definition_id = SYSTEMS.item_definition_lookup_service.is_character_level_component_all()
+        .iter().last().unwrap().0;
     match items.iter().find(|x| x.item_definition_id == *level_item_definition_id) {
         None => {}
         Some(x) => {result.push(x);}
@@ -231,28 +232,16 @@ pub fn could_collect_item(
     character_inventory_items: &[InventoryItem],
 ) -> bool {
     // Check if the _item_to_collect_definition has a component of type InventoryHiddenItemComponent
-    if InventoryHiddenItemComponentLookup
-        .get(&item_definition_id)
+    if SYSTEMS.item_definition_lookup_service.inventory_hidden_item_component(&item_definition_id)
         .is_some()
     {
         // Hidden items can always be collected (they don't count toward inventory limits)
         return true;
     }
 
-    let max_visible_inventory_capacity =
-        match MaximumVisibleInventoryCapacitySingletonComponentLookup
-            .iter()
-            .last()
-        {
-            None => {
-                eprintln!("Failed to get MaximumVisibleInventoryCapacity");
-                0u32
-            }
-            Some(x) => x.1.capacity,
-        };
-
+    let max_visible_inventory_capacity = SYSTEMS.item_definition_lookup_service.maximum_visible_inventory_capacity_singleton().capacity;
     // Check if the item is stackable, if so, check if we already have it in the inventory
-    if IsStackableComponentLookup.get(&item_definition_id).is_some() {
+    if SYSTEMS.item_definition_lookup_service.is_stackable_component(&item_definition_id).is_some() {
         // Check if we have it in the inventory already
         for item in character_inventory_items {
             if item.item_definition_id == item_definition_id {
@@ -270,8 +259,7 @@ pub fn could_collect_item(
 pub fn count_visible_inventory_items(items: &[InventoryItem]) -> u32 {
     let item_count = items.len() as u32;
     let hidden_item_count =
-        filter_inventory_items_by_component(&items, &InventoryHiddenItemComponentLookup).len()
-            as u32;
+        filter_inventory_items_by_component(&items, &INVENTORY_HIDDEN_ITEM_COMPONENT_LOOKUP).len() as u32;
     max(0u32, item_count - hidden_item_count)
 }
 

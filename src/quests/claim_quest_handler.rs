@@ -1,5 +1,4 @@
 use crate::handlers::utils;
-use crate::item_definitions::TransactionComponentLookup;
 use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
@@ -58,7 +57,7 @@ impl RequestHandler for ClaimQuestHandler {
             ));
         }
 
-        let quest_transaction = match TransactionComponentLookup.get(&req.quest_definition_id) {
+        let quest_transaction = match SYSTEMS.item_definition_lookup_service.transaction_component(&req.quest_definition_id) {
             None => {
                 return Ok(build_error_response(
                     message_id,
@@ -74,7 +73,7 @@ impl RequestHandler for ClaimQuestHandler {
                         "Quest is not a transaction",
                     ));
                 }
-                Some(x) => x,
+                Some(x) => x.clone(),
             },
         };
         // TODO: luis getting rewards could fail due not enough inventory space!! We should check it before and ignore the claim

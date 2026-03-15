@@ -6,6 +6,7 @@ use crate::map::models::StatusInstance;
 use proto_gen::{DamageOnHitComponent, HealOnHitComponent, InventoryItem, ItemAttributeDefinition, StatType, StatusType};
 use rand::prelude::SmallRng;
 use rand::Rng;
+use std::sync::Arc;
 
 /// Calculates the damage of a skill based on the character's attributes, equipped items,
 /// and skill-specific modifiers.
@@ -125,7 +126,7 @@ pub struct CharacterDamageModifier {
 }
 
 impl CharacterDamageModifier {
-    pub fn from_damage_component(comp: &DamageOnHitComponent) -> Self {
+    pub fn from_damage_component(comp: Arc<DamageOnHitComponent>) -> Self {
         Self {
             base_damage: comp.base_damage as i64,
             strength_modifier: comp.strength_modifier,
@@ -134,7 +135,7 @@ impl CharacterDamageModifier {
         }
     }
 
-    pub fn from_heal_component(comp: &HealOnHitComponent) -> Self {
+    pub fn from_heal_component(comp: Arc<HealOnHitComponent>) -> Self {
         Self {
             base_damage: comp.base_heal as i64,
             strength_modifier: comp.strength_modifier,

@@ -1,8 +1,8 @@
 use crate::behaviour_trees::behaviour_tree_map_context::BehaviourTreeMapContext;
 use crate::behaviour_trees::behaviour_tree_status::BTStatus;
 use crate::behaviour_trees::utils::move_to_positions;
-use crate::item_definitions::SkillComponentLookup;
 use crate::map::models::{MapEntities, TargetPositions};
+use crate::systems::systems::SYSTEMS;
 use dashmap::DashMap;
 use glam::Vec2;
 use proto_gen::{BtRepeatMode, Position};
@@ -238,7 +238,7 @@ impl BehaviorTreeNode {
                     }
                     _ => return BTStatus::Failure,
                 };
-                let skill_component = match SkillComponentLookup.get(&skill_definition_id) {
+                let skill_component = match SYSTEMS.item_definition_lookup_service.skill_component(&skill_definition_id) {
                     None => {
                         return BTStatus::Failure;
                     }

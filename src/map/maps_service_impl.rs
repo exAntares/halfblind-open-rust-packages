@@ -1,10 +1,10 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::models::Character;
-use crate::item_definitions::CharacterDefinitionComponentLookup;
 use crate::map::game_map::GameMap;
 use crate::map::maps_service::MapsService;
 use crate::map::models::{MapAction, MapActionTimed, MapEntities};
 use crate::map_update::maps_update_service::MapsUpdateService;
+use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_inventory_service::InventoryService;
@@ -50,8 +50,7 @@ impl MapsService for MapsServiceImpl {
             }
         }// Release lock
 
-        let character_definition = match CharacterDefinitionComponentLookup
-            .get(&(character_db.character_definition_id as u64))
+        let character_definition = match SYSTEMS.item_definition_lookup_service.character_definition_component(&(character_db.character_definition_id as u64))
         {
             Some(x) => x,
             None => {

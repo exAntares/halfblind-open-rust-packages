@@ -2,6 +2,7 @@ use crate::characters::characters_service::CharactersService;
 use crate::characters::characters_service_impl::CharactersServiceImpl;
 use crate::inventory::inventory_item_utils::{generate_inventory_item_for_player_default, try_aggregate_inventories};
 use crate::inventory::inventory_service_impl::InventoryServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::map::maps_service::MapsService;
 use crate::map::maps_service_impl::MapsServiceImpl;
 use crate::map_update::maps_update_service::MapsUpdateService;
@@ -52,6 +53,7 @@ pub static SYSTEMS: Lazy<Arc<Systems>> = Lazy::new(|| {
         random_service.clone(),
     ));
     let transaction_service = Arc::new(TransactionServiceImpl::default());
+    let item_definition_lookup_service = Arc::new(ItemDefinitionLookupServiceImpl::default());
     let systems = Arc::new(Systems::new(
         database_impl,
         characters_impl,
@@ -60,6 +62,7 @@ pub static SYSTEMS: Lazy<Arc<Systems>> = Lazy::new(|| {
         maps_update_service,
         random_service,
         transaction_service,
+        item_definition_lookup_service,
     ));
     systems
 });
@@ -76,6 +79,7 @@ pub struct Systems {
     pub maps_update_service: Arc<dyn MapsUpdateService + Send + Sync>,
     pub random_service: Arc<dyn RandomService + Send + Sync>,
     pub transaction_service: Arc<dyn TransactionService<InventoryItem> + Send + Sync>,
+    pub item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
 }
 
 impl Systems {
@@ -87,6 +91,7 @@ impl Systems {
         maps_update_service: Arc<dyn MapsUpdateService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         transition_service: Arc<dyn TransactionService<InventoryItem> + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     ) -> Self {
         Self {
             maps_service: Arc::new(MapsServiceImpl::new(
@@ -102,6 +107,7 @@ impl Systems {
             maps_update_service,
             random_service,
             transaction_service: transition_service,
+            item_definition_lookup_service,
         }
     }
 }

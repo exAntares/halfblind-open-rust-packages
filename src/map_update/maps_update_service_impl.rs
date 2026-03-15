@@ -1,7 +1,6 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::models::DatabaseCharacter;
 use crate::inventory::inventory_item_utils::filter_visible_inventory;
-use crate::item_definitions::{CharacterDefinitionComponentLookup, MobComponentLookup};
 use crate::map::game_map::GameMap;
 use crate::map::maps_service::MapsService;
 use crate::map::models::MapAction::SpawnMob;
@@ -217,7 +216,7 @@ impl MapsUpdateServiceImpl {
         let spawn_points_data: Vec<_> = map_component.spawn_points
             .iter()
             .filter_map(|spawn_point| {
-                MobComponentLookup.get(&spawn_point.enemy_definition_id)
+                SYSTEMS.item_definition_lookup_service.mob_component(&spawn_point.enemy_definition_id)
                     .map(|mob_comp| (spawn_point.enemy_definition_id, spawn_point.position, mob_comp.clone()))
             }).collect();
         let spawn_points_count = spawn_points_data.len();
@@ -431,7 +430,7 @@ impl MapsUpdateServiceImpl {
                             continue;
                         }
                     };
-                    let character_definition = match CharacterDefinitionComponentLookup.get(&(character_instance.character_db.character_definition_id as u64)) {
+                    let character_definition = match SYSTEMS.item_definition_lookup_service.character_definition_component(&(character_instance.character_db.character_definition_id as u64)) {
                         None => {
                             eprintln!("Failed to get character definition: {}", character_instance.character_db.character_definition_id);
                             continue;

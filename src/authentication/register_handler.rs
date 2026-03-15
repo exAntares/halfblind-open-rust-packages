@@ -1,6 +1,5 @@
 use crate::db;
 use crate::inventory::inventory_item_utils;
-use crate::item_definitions::InventoryInitialValueComponentLookup;
 use crate::systems::systems::{Systems, SYSTEMS};
 use halfblind_network::*;
 use halfblind_protobuf_network::*;
@@ -78,13 +77,9 @@ pub async fn add_default_inventory_to_player(
     player_uuid: Uuid,
     systems: Arc<Systems>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let inventory_items_components = InventoryInitialValueComponentLookup
-        .iter()
-        .collect::<Vec<_>>();
-
     // Convert to InventoryItem protobuf messages using generate_inventory_item_for_player
     let mut inventory_items = Vec::new();
-    for (item_id, component) in inventory_items_components {
+    for (item_id, component) in SYSTEMS.item_definition_lookup_service.inventory_initial_value_component_all() {
         let generated_item = inventory_item_utils::generate_inventory_item_for_player(
             systems.items_definitions_service.clone(),
             systems.random_service.clone(),

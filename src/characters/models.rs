@@ -1,4 +1,5 @@
 use proto_gen::CharacterDefinitionComponent;
+use std::sync::Arc;
 
 #[derive(sqlx::FromRow, Clone, Debug)]
 pub struct DatabaseCharacter {
@@ -16,7 +17,7 @@ pub struct DatabaseCharacter {
 #[derive(Clone, Debug)]
 pub struct Character {
     pub character_db: DatabaseCharacter,
-    pub character_definition: CharacterDefinitionComponent,
+    pub character_definition: Arc<CharacterDefinitionComponent>,
 }
 
 impl Character {

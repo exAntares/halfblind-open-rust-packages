@@ -1,4 +1,3 @@
-use crate::item_definitions::TransactionComponentLookup;
 use crate::systems::systems::SYSTEMS;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
@@ -21,7 +20,7 @@ async fn handle(
         Err(response) => return Ok(response),
     };
     let transaction = match get_transaction_definition(req.transaction_id).await {
-        Ok(result) => match result.transaction {
+        Ok(result) => match &result.transaction {
             None => {
                 return Ok(build_error_response(
                     message_id,
@@ -29,7 +28,7 @@ async fn handle(
                     &format!("Transaction definition not found for id {}.", req.transaction_id),
                 ));
             }
-            Some(x) => x,
+            Some(x) => x.clone(),
         },
         Err(error_code) => {
             return Ok(build_error_response(
@@ -74,8 +73,8 @@ async fn handle(
 
 pub async fn get_transaction_definition(
     transaction_id: u64,
-) -> Result<TransactionComponent, ItemsErrorCode> {
-    let transaction_component = match TransactionComponentLookup.get(&transaction_id) {
+) -> Result<Arc<TransactionComponent>, ItemsErrorCode> {
+    let transaction_component = match SYSTEMS.item_definition_lookup_service.transaction_component(&transaction_id) {
         None => return Err(ItemsErrorCode::InvalidItemDefinition),
         Some(transaction_component) => transaction_component,
     };

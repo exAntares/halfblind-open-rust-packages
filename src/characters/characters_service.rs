@@ -12,7 +12,7 @@ pub trait CharactersService: Send + Sync {
         &self,
         player_uuid: Uuid,
         character_definition_id: i64,
-        character_definition: CharacterDefinitionComponent,
+        character_definition: Arc<CharacterDefinitionComponent>,
         character_name: String,
     ) -> Result<Arc<RwLock<DatabaseCharacter>>, Box<dyn Error + Send + Sync>>;
 
