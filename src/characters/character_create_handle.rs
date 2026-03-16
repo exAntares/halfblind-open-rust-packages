@@ -4,7 +4,6 @@ use crate::systems::systems::{Systems, SYSTEMS};
 use async_trait::async_trait;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
-use prost::Message;
 use proto_gen::{CharacterCreateRequest, CharacterCreateResponse, GameErrorCode, InventoryItem};
 use proto_gen::{CharacterInstance, CharacterPrivateInstance};
 use protobuf_itemdefinition::ItemsErrorCode;
@@ -19,16 +18,12 @@ pub struct CharacterCreateHandler;
 impl RequestHandler for CharacterCreateHandler {
     async fn handle(
         &self,
-        message_id: u64,
         message_timestamp: u64,
         payload: &[u8],
         ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
-        let player_uuid = match validate_player_context(&ctx, message_id) {
-            Ok(result) => result,
-            Err(response) => return Ok(response),
-        };
-        let req = CharacterCreateRequest::decode(payload)?;
+    ) -> Result<ProtoResponse, ProtoResponse> {
+        let player_uuid = validate_player_context(&ctx)?;
+        let req = decode_or_error::<CharacterCreateRequest>(payload)?;
         let character_name = req.character_name.clone();
         let character_definition_id = req.character_definition_id;
         let character_slot_count_id = match SYSTEMS.item_definition_lookup_service.is_current_character_slot_count_component_all()
@@ -36,7 +31,6 @@ impl RequestHandler for CharacterCreateHandler {
         {
             None => {
                 return Ok(build_error_response(
-                    message_id,
                     ItemsErrorCode::InvalidItemDefinition as i32,
                     &"Character Slot id not found".to_string(),
                 ));
@@ -52,7 +46,6 @@ impl RequestHandler for CharacterCreateHandler {
             Ok(slots_count) => slots_count,
             Err(_) => {
                 return Ok(build_error_response(
-                    message_id,
                     GameErrorCode::NotEnoughCharacterSlots as i32,
                     "slot count not found".into(),
                 ));
@@ -66,7 +59,6 @@ impl RequestHandler for CharacterCreateHandler {
             .unwrap();
         if all_characters.iter().count() >= slots_count as usize {
             return Ok(build_error_response(
-                message_id,
                 GameErrorCode::NotEnoughCharacterSlots as i32,
                 "Not enough character slots".into(),
             ));
@@ -76,7 +68,6 @@ impl RequestHandler for CharacterCreateHandler {
             match CHARACTER_DEFINITION_COMPONENT_LOOKUP.get(&character_definition_id) {
                 None => {
                     return Ok(build_error_response(
-                        message_id,
                         ItemsErrorCode::InvalidItemDefinition as i32,
                         "Unknown character definition id",
                     ));
@@ -97,7 +88,6 @@ impl RequestHandler for CharacterCreateHandler {
             Ok(r) => r,
             Err(e) => {
                 return Ok(build_error_response(
-                    message_id,
                     halfblind_protobuf_network::ErrorCode::UnknownError as i32,
                     &format!("Failure creating character: {}", e),
                 ));
@@ -125,7 +115,6 @@ impl RequestHandler for CharacterCreateHandler {
             Ok(e) => e,
             Err(e) => {
                 return Ok(build_error_response(
-                    message_id,
                     halfblind_protobuf_network::ErrorCode::UnknownError as i32,
                     &format!("Failure creating initial character inventory: {}", e),
                 ));
@@ -151,7 +140,7 @@ impl RequestHandler for CharacterCreateHandler {
                 statuses: Vec::new(),
             }),
         };
-        Ok(encode_ok(message_id, response)?)
+        encode_ok(&response)
     }
 }
 

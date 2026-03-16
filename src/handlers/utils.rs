@@ -37,7 +37,6 @@ use uuid::Uuid;
 pub async fn validate_character_and_player_uuid(
     ctx: &Arc<ConnectionContext>,
     systems: Arc<Systems>,
-    message_id: u64,
     character_uuid_str: String,
 ) -> Result<(Uuid, Uuid), ProtoResponse> {
     // Get and validate player UUID
@@ -45,7 +44,6 @@ pub async fn validate_character_and_player_uuid(
         Some(id) => id,
         None => {
             return Err(build_error_response(
-                message_id,
                 halfblind_protobuf_network::ErrorCode::AuthenticationFailed as i32,
                 "User not logged in trying to do something",
             ));
@@ -56,7 +54,6 @@ pub async fn validate_character_and_player_uuid(
         Ok(c) => c,
         Err(_) => {
             return Err(build_error_response(
-                message_id,
                 GameErrorCode::InvalidCharacter as i32,
                 "Invalid character UUID",
             ));
@@ -71,7 +68,6 @@ pub async fn validate_character_and_player_uuid(
         Ok(has_character) => {
             if !has_character {
                 return Err(build_error_response(
-                    message_id,
                     GameErrorCode::InvalidCharacter as i32,
                     "Player is requesting action for a character that is not owned!",
                 ));
@@ -80,7 +76,6 @@ pub async fn validate_character_and_player_uuid(
         Err(e) => {
             eprintln!("Error checking if character exists: {}", e);
             return Err(build_error_response(
-                message_id,
                 halfblind_protobuf_network::ErrorCode::UnknownError as i32,
                 "Something happened while trying to check if character exists. Please try again later.",
             ));

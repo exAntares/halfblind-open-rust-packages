@@ -5,7 +5,6 @@ use halfblind_network::*;
 use halfblind_protobuf_network::*;
 use proto_gen::CharactersQueryResponse;
 use proto_gen::{CharacterInstance, CharacterPrivateInstance, InventoryItem};
-use std::error::Error;
 use std::sync::Arc;
 
 #[derive(Default)]
@@ -15,15 +14,11 @@ pub struct CharactersQueryHandler;
 impl RequestHandler for CharactersQueryHandler {
     async fn handle(
         &self,
-        message_id: u64,
         message_timestamp: u64,
         _payload: &[u8],
         ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
-        let player_uuid = match validate_player_context(&ctx, message_id) {
-            Ok(result) => result,
-            Err(response) => return Ok(response),
-        };
+    ) -> Result<ProtoResponse, ProtoResponse> {
+        let player_uuid = validate_player_context(&ctx)?;
 
         let characters;
         {
@@ -34,8 +29,7 @@ impl RequestHandler for CharactersQueryHandler {
             {
                 Ok(characters) => characters,
                 Err(e) => {
-                    return Ok(build_error_response(
-                        message_id,
+                    return Err(build_error_response(
                         ErrorCode::UnknownError.into(),
                         format!("failed to get all characters {}", e).as_str(),
                     ));
@@ -84,6 +78,6 @@ impl RequestHandler for CharactersQueryHandler {
             });
         }
         let response = CharactersQueryResponse { owned_characters };
-        Ok(encode_ok(message_id, response)?)
+        encode_ok(&response)
     }
 }

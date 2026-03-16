@@ -345,10 +345,10 @@ impl MapsUpdateServiceImpl {
         maps_service: Arc<dyn MapsService + Send + Sync>,
         update: &MapUpdateResponse,
     ) {
-        let message = match encode_message(0, update.clone()) {
+        let message = match encode_message(update.clone()) {
             Ok(msg) => msg,
             Err(e) => {
-                eprintln!("Failed to encode message: {}", e);
+                eprintln!("Failed to encode message: {:?}", e);
                 return;
             }
         };
