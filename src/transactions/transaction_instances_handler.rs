@@ -1,40 +1,37 @@
 use crate::systems::systems::SYSTEMS;
 use halfblind_network::*;
-use halfblind_protobuf_network::ProtoResponse;
+use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
 use halfblind_transactions::TransactionRecord;
 use ::protobuf_itemdefinition::*;
-use std::error::Error;
 use std::sync::Arc;
 
 request_handler!(TransactionInstancesRequest => TransactionInstancesHandler);
 
 async fn handle(
-        message_id: u64,
-        message_timestamp: u64,
+        _message_timestamp: u64,
         _: TransactionInstancesRequest,
         ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
-    let player_uuid = match validate_player_context(&ctx, message_id) {
-        Ok(result) => result,
-        Err(response) => return Ok(response),
-    };
-
+    ) -> Result<ProtoResponse, ProtoResponse> {
+    let player_uuid = validate_player_context(&ctx)?;
     let db_pool = SYSTEMS.database_service.get_db_pool();
     // Query pending transactions from the database
-    let transactions = sqlx::query_as::<_, TransactionRecord>(
+    let transactions = match sqlx::query_as::<_, TransactionRecord>(
         r#"
-            SELECT 
+            SELECT
                 id,
                 player_uuid,
-                end_at, 
-                item_id, 
+                end_at,
+                item_id,
                 quantity
             FROM player_transactions WHERE player_uuid = $1
             "#,
     )
         .bind(player_uuid)
         .fetch_all(db_pool.as_ref())
-        .await?;
+        .await {
+        Ok(x) => x,
+        Err(e) => return Err(build_error_response(ErrorCode::UnknownError.into(), &format!("Failed to query transactions: {}", e)))
+    };
 
     let transactions_instances: Vec<TransactionInstance> = transactions
         .into_iter()
@@ -54,5 +51,5 @@ async fn handle(
     let response = TransactionInstancesResponse {
         transactions: transactions_instances,
     };
-    Ok(encode_ok(message_id, response)?)
+    encode_ok(&response)
 }

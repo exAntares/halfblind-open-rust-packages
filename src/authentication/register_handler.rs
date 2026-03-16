@@ -11,32 +11,35 @@ use uuid::Uuid;
 request_handler!(RegisterRequest => RegisterHandler);
 
 async fn handle(
-        message_id: u64,
-        message_timestamp: u64,
+        _message_timestamp: u64,
         req: RegisterRequest,
-        ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
+        _ctx: Arc<ConnectionContext>,
+    ) -> Result<ProtoResponse, ProtoResponse> {
     let db_pool = SYSTEMS.database_service.get_db_pool();
     let player_uuid = match Uuid::parse_str(&req.player_uuid) {
         Ok(player_uuid) => player_uuid,
         Err(_) => {
             return Ok(build_error_response(
-                message_id,
                 ErrorCode::InvalidRequest as i32,
                 &format!("Register is not a valid UUID {}", req.player_uuid),
             ));
         }
     };
 
-    let player_exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM players WHERE uuid = $1)")
+    let player_exists = match sqlx::query("SELECT EXISTS(SELECT 1 FROM players WHERE uuid = $1)")
         .bind(player_uuid)
         .fetch_one(db_pool.as_ref())
-        .await?
+        .await {
+        Ok(x) => x,
+        Err(e) => return Err(build_error_response(
+            ErrorCode::UnknownError as i32,
+            &format!("Failed to check player existence: {}", e),
+        )),
+    }
         .get::<bool, _>(0);
 
     if player_exists {
         return Ok(build_error_response(
-            message_id,
             ErrorCode::UserAlreadyExists as i32,
             "",
         ));
@@ -45,26 +48,42 @@ async fn handle(
     #[cfg(feature = "dev-password")]
     {
         // This code only compiles when the "dev-password" feature is enabled
-        password = Uuid::parse_str("12345678-1234-1234-1234-123456789012")?;
+        password = match Uuid::parse_str("12345678-1234-1234-1234-123456789012") {
+            Ok(x) => x,
+            Err(e) => return Err(build_error_response(ErrorCode::UnknownError as i32, &format!("failed to parse dev-password: {}", e))),
+        };
     }
     #[cfg(not(feature = "dev-password"))]
     {
         // Generate new UUID token
         password = Uuid::new_v4();
     }
-    let _ = match db::db::create_player_or_not(&db_pool, player_uuid, password).await {
+    let _ = match match db::db::create_player_or_not(&db_pool, player_uuid, password).await {
         Ok(_) => Ok(true),
         Err(e) if e.to_string().contains("duplicate key") => Ok(false),
         Err(e) => Err(e),
-    }?;
+    } {
+        Ok(x) => x,
+        Err(e) => {
+            return Err(build_error_response(
+                ErrorCode::UnknownError as i32,
+                &format!("Failed to create player: {}", e),
+            ));
+        }
+    };
 
-    add_default_inventory_to_player(player_uuid, SYSTEMS.clone()).await?;
+    if let Err(e) = add_default_inventory_to_player(player_uuid, SYSTEMS.clone()).await {
+        return Err(build_error_response(
+            ErrorCode::UnknownError as i32,
+            &format!("Failed to add default inventory: {}", e),
+        ));
+    }
 
     let response = RegisterResponse {
         player_uuid: player_uuid.to_string(),
         token: password.to_string(),
     };
-    Ok(encode_ok(message_id, response)?)
+    encode_ok(&response)
 }
 
 #[derive(Debug)]

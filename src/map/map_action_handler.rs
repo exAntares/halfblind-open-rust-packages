@@ -5,12 +5,10 @@ use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use halfblind_network::*;
 use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
-use prost::Message;
 use proto_gen::map_action_request::MapAction;
 use proto_gen::{CharacterStat, InventoryItem};
 use proto_gen::{GameErrorCode, MapActionRequest, MapActionResponse};
 use protobuf_itemdefinition::ItemsErrorCode;
-use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -21,22 +19,17 @@ pub struct MapActionHandler {}
 impl RequestHandler for MapActionHandler {
     async fn handle(
         &self,
-        message_id: u64,
         message_timestamp: u64,
         payload: &[u8],
         ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
-        let player_uuid = match validate_player_context(&ctx, message_id) {
-            Ok(result) => result,
-            Err(response) => return Ok(response),
-        };
-        let req = MapActionRequest::decode(payload)?;
+    ) -> Result<ProtoResponse, ProtoResponse> {
+        let player_uuid = validate_player_context(&ctx)?;
+        let req = decode_or_error::<MapActionRequest>(payload)?;
         let character_uuid_str = req.character_uuid;
         let character_uuid = match Uuid::parse_str(&character_uuid_str) {
             Ok(c) => c,
             Err(_) => {
                 return Ok(build_error_response(
-                    message_id,
                     GameErrorCode::InvalidCharacter.into(),
                     "Invalid character UUID",
                 ));
@@ -47,7 +40,6 @@ impl RequestHandler for MapActionHandler {
         let game_map= match SYSTEMS.maps_service.get_player_map(&player_uuid) {
             None => {
                 return Ok(build_error_response(
-                    message_id,
                     GameErrorCode::PlayerIsNotInAnyMap.into(),
                     "Player is not on any map!",
                 ));
@@ -59,7 +51,6 @@ impl RequestHandler for MapActionHandler {
         match game_map.player_by_character.get(&character_uuid) {
             None => {
                 return Ok(build_error_response(
-                    message_id,
                     GameErrorCode::InvalidCharacter.into(),
                     "There is no player for requested character on this map.",
                 ));
@@ -67,7 +58,6 @@ impl RequestHandler for MapActionHandler {
             Some(player_by_character) => {
                 if player_by_character.value().clone() != player_uuid.clone() {
                     return Ok(build_error_response(
-                        message_id,
                         GameErrorCode::InvalidCharacter.into(),
                         "Player is requesting action for another player!",
                     ));
@@ -78,7 +68,6 @@ impl RequestHandler for MapActionHandler {
         let action = match req.map_action {
             None => {
                 return Ok(build_error_response(
-                    message_id,
                     halfblind_protobuf_network::ErrorCode::UnknownError.into(),
                     "Invalid MapAction",
                 ));
@@ -95,7 +84,7 @@ impl RequestHandler for MapActionHandler {
                     },
                 });
                 let response = MapActionResponse {};
-                Ok(encode_ok(message_id, response)?)
+                encode_ok(&response)
             }
             MapAction::UsableSkill(skill_request) => {
                 if let Some(skill_comp) =
@@ -104,7 +93,7 @@ impl RequestHandler for MapActionHandler {
                     let character_inventory_guard = match SYSTEMS.inventory_service.get_inventory(player_uuid, character_uuid).await {
                         Ok(x) => {x}
                         Err(e) => {
-                            return Ok(build_error_response(message_id, halfblind_protobuf_network::ErrorCode::UnknownError.into(), format!("Failed to get character inventory: {}", e).as_str()));
+                            return Ok(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), format!("Failed to get character inventory: {}", e).as_str()));
                         }
                     };
                     let character_inventory = character_inventory_guard.read().await;
@@ -117,7 +106,6 @@ impl RequestHandler for MapActionHandler {
                     }
                     if !found {
                         return Ok(build_error_response(
-                            message_id,
                             GameErrorCode::SkillNotOwned.into(),
                             &format!("Character does not have such Skill {}", skill_request.skill_definition_id)));
                     }
@@ -132,10 +120,9 @@ impl RequestHandler for MapActionHandler {
                         },
                     });
                     let response = MapActionResponse {};
-                    Ok(encode_ok(message_id, response)?)
+                    encode_ok(&response)
                 } else {
                     Ok(build_error_response(
-                        message_id,
                         ItemsErrorCode::InvalidItemDefinition.into(),
                         "Skill does not exist!",
                     ))
@@ -160,26 +147,24 @@ impl RequestHandler for MapActionHandler {
                             },
                         });
                         let response = MapActionResponse {};
-                        Ok(encode_ok(message_id, response)?)
+                        encode_ok(&response)
                     }
                     Err(_) => {
-                        Ok(build_error_response(message_id, ErrorCode::UnknownError.into(), "Failed to get character inventory"))
+                        Err(build_error_response(ErrorCode::UnknownError.into(), "Failed to get character inventory"))
                     }
                 }
             }
             MapAction::UseTeleport(req) => {
                 let index = req.teleport_index as usize;
                 if game_map.map_component.teleporter.len() <= index {
-                    return Ok(build_error_response(
-                        message_id,
+                    return Err(build_error_response(
                         ItemsErrorCode::InvalidItemDefinition.into(),
                         "Index does not exist on teleporters",
                     ));
                 }
                 let teleport = game_map.map_component.teleporter[index];
                 if SYSTEMS.item_definition_lookup_service.transaction_component(&teleport.transaction_id).is_none() {
-                    return Ok(build_error_response(
-                        message_id,
+                    return Err(build_error_response(
                         ItemsErrorCode::TransactionInvalid.into(),
                         "Transaction does not exist",
                     ));
@@ -194,14 +179,17 @@ impl RequestHandler for MapActionHandler {
                 ).await {
                     Ok(_) => {}
                     Err(e) => {
-                        return Ok(build_error_response(message_id, e.into(), &"Failed transaction".to_string()))
+                        return Ok(build_error_response(e.into(), &"Failed transaction".to_string()))
                     }
                 };
 
-                let inventory_lock = SYSTEMS
+                let inventory_lock = match SYSTEMS
                     .inventory_service
                     .get_inventory(player_uuid, character_uuid)
-                    .await?;
+                    .await {
+                    Ok(x) => x,
+                    Err(e) => return Err(build_error_response(ErrorCode::UnknownError.into(), &format!("Failed to get character inventory {}", e))),
+                };
 
                 let visible_inventory: Vec<InventoryItem>;
                 {
@@ -226,10 +214,9 @@ impl RequestHandler for MapActionHandler {
                 {
                     Ok(_) => {
                         let response = MapActionResponse {};
-                        Ok(encode_ok(message_id, response)?)
+                        encode_ok(&response)
                     }
                     Err(e) => Ok(build_error_response(
-                        message_id,
                         ErrorCode::UnknownError.into(),
                         format!("Failed to change player to a new map {}", e).as_str(),
                     )),
@@ -242,7 +229,6 @@ impl RequestHandler for MapActionHandler {
                     2 => CharacterStat::Str,
                     _ => {
                         return Ok(build_error_response(
-                            message_id,
                             GameErrorCode::InvalidCharacterStat.into(),
                             "Invalid stat type",
                         ));
@@ -256,7 +242,7 @@ impl RequestHandler for MapActionHandler {
                     },
                 });
                 let response = MapActionResponse {};
-                Ok(encode_ok(message_id, response)?)
+                encode_ok(&response)
             }
         }
     }

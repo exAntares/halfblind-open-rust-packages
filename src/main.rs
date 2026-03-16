@@ -80,29 +80,17 @@ async fn handle_socket(socket: WebSocket, systems: Arc<Systems>) {
                 match ProtoRequest::decode(&*data) {
                     Ok(request) => {
                         let message_id = request.message_id;
-                        let response = handle_request(request, ctx.clone())
+                        let mut response = handle_request(request, ctx.clone())
                             .await
-                            .unwrap_or_else(|err| {
-                                build_error_response(
-                                    message_id,
-                                    ErrorCode::UnknownError.into(),
-                                    &err.to_string(),
-                                )
-                            });
-                        let message = match encode_proto_response(response) {
-                            Ok(msg) => msg,
-                            Err(e) => {
-                                let error_response = build_error_response(
-                                    message_id,
-                                    ErrorCode::UnknownError.into(),
-                                    &format!("Failed to encode response: {}", e),
-                                );
-                                encode_proto_response(error_response).unwrap_or_else(|_| {
-                                    // If we somehow fail to encode the error response, return a close message as a last resort
-                                    axum::extract::ws::Message::Close(None)
-                                })
-                            }
-                        };
+                            .unwrap_or_else(|e| e);
+                        response.message_id = message_id;
+                        let message = encode_proto_response(response).unwrap_or_else(|mut error_response| {
+                            error_response.message_id = message_id;
+                            encode_proto_response(error_response).unwrap_or_else(|_| {
+                                // If we somehow fail to encode the error response, return a close message as a last resort
+                                axum::extract::ws::Message::Close(None)
+                            })
+                        });
                         let mut writer = ctx.ws_writer.lock().await;
                         if writer.send(message).await.is_err() {
                             eprintln!("Failed to send response");
@@ -131,27 +119,26 @@ async fn handle_socket(socket: WebSocket, systems: Arc<Systems>) {
 async fn handle_request(
     request: ProtoRequest,
     ctx: Arc<ConnectionContext>,
-) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
+) -> Result<ProtoResponse, ProtoResponse> {
     if let Some(any_payload) = request.any_payload {
         let type_url = any_payload.type_url.as_str();
         let handler = HANDLER_REGISTRY_BY_ANY_TYPE.get(type_url);
         if let Some(handler) = handler {
-            Ok(handler
+            return handler
                 .handle(
-                    request.message_id,
                     request.message_timestamp,
                     &any_payload.value,
                     ctx,
                 )
-                .await?)
-        } else {
-            Ok(build_error_response(
-                request.message_id,
-                ErrorCode::InvalidRequest.into(),
-                "No handler found for this request type",
-            ))
+                .await;
         }
-    } else {
-        Err("No any_payload found in request".into())
+        return Err(build_error_response(
+            ErrorCode::InvalidRequest.into(),
+            "No handler found for this request type",
+        ));
     }
+    Err(build_error_response(
+        ErrorCode::InvalidRequest.into(),
+        "No any_payload found in request",
+    ))
 }

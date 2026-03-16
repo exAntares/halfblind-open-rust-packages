@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
 use proto_gen::PlayerInventoryResponse;
-use std::error::Error;
 use std::sync::Arc;
 
 #[derive(Default)]
@@ -13,22 +12,17 @@ pub struct PlayerInventoryHandler;
 impl RequestHandler for PlayerInventoryHandler {
     async fn handle(
         &self,
-        message_id: u64,
         _message_timestamp: u64,
         payload: &[u8],
         ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
+    ) -> Result<ProtoResponse, ProtoResponse> {
         // Ensure player is authenticated
-        let player_uuid = match validate_player_context(&ctx, message_id) {
-            Ok(player_uuid) => player_uuid,
-            Err(response) => return Ok(response),
-        };
+        let player_uuid = validate_player_context(&ctx)?;
 
         let result = match SYSTEMS.inventory_service.get_player_inventory(player_uuid).await {
             Ok(inventory) => inventory,
             Err(_) => {
                 return Ok(build_error_response(
-                    message_id,
                     halfblind_protobuf_network::ErrorCode::UnknownError.into(),
                     "Inventory does not exist",
                 ));
@@ -38,6 +32,6 @@ impl RequestHandler for PlayerInventoryHandler {
         let response = PlayerInventoryResponse {
             inventory: player_inventory,
         };
-        encode_ok(message_id, response)
+        encode_ok(&response)
     }
 }

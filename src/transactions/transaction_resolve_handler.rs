@@ -3,27 +3,21 @@ use halfblind_network::*;
 use halfblind_protobuf_network::*;
 use halfblind_transactions::resolve_expired_transaction;
 use proto_gen::{TransactionResolveRequest, TransactionResolveResponse};
-use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
 
 request_handler!(TransactionResolveRequest => TransactionResolveHandler);
 
 async fn handle(
-        message_id: u64,
         message_timestamp: u64,
         req: TransactionResolveRequest,
         ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
-    let player_uuid = match validate_player_context(&ctx, message_id) {
-        Ok(result) => result,
-        Err(response) => return Ok(response),
-    };
+    ) -> Result<ProtoResponse, ProtoResponse> {
+    let player_uuid = validate_player_context(&ctx)?;
     let transaction_id = match Uuid::parse_str(&req.id) {
         Ok(id) => id,
         Err(_) => {
-            return Ok(build_error_response(
-                message_id,
+            return Err(build_error_response(
                 ErrorCode::InvalidRequest.into(),
                 "",
             ));
@@ -39,16 +33,19 @@ async fn handle(
         .await;
     match result {
         Err((error_code, _)) => {
-            return Ok(build_error_response(message_id, error_code.into(), ""));
+            return Ok(build_error_response(error_code.into(), ""));
         }
         _ => {}
     };
-    let inventory = SYSTEMS
+    let inventory = match SYSTEMS
         .inventory_service
         .get_player_inventory(player_uuid)
-        .await?;
+        .await {
+        Ok(x) => x,
+        Err(e) => return Err(build_error_response(ErrorCode::UnknownError.into(), &format!("Failed to get player inventory: {}", e))),
+    };
     let response = TransactionResolveResponse {
         inventory: inventory.read().await.clone(),
     };
-    Ok(encode_ok(message_id, response)?)
+    encode_ok(&response)
 }

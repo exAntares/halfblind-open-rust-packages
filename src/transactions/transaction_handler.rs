@@ -1,33 +1,30 @@
 use crate::systems::systems::SYSTEMS;
 use halfblind_network::*;
-use halfblind_protobuf_network::ProtoResponse;
+use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
 use proto_gen::{TransactionRequest, TransactionResponse};
 use ::protobuf_itemdefinition::*;
-use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
 
 request_handler!(TransactionRequest => TransactionHandler);
 
 async fn handle(
-        message_id: u64,
         _message_timestamp: u64,
         req: TransactionRequest,
         ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, Box<dyn Error + Send + Sync>> {
-    let player_uuid = match validate_player_context(&ctx, message_id) {
-        Ok(result) => result,
-        Err(response) => return Ok(response),
-    };
+    ) -> Result<ProtoResponse, ProtoResponse> {
+    let player_uuid = validate_player_context(&ctx)?;
     if let Err(error_code) = get_transaction_definition(req.transaction_id).await {
         return Ok(build_error_response(
-                      message_id,
-                      ItemsErrorCode::TransactionInvalid.into(),
+            ItemsErrorCode::TransactionInvalid.into(),
                       "Transaction definition not found.",
                   ));
     };
 
-    let secondary_key_uuid = Uuid::parse_str(&req.inventory_source_uuid)?;
+    let secondary_key_uuid = match Uuid::parse_str(&req.inventory_source_uuid) {
+        Ok(x) => x,
+        Err(e) => return Ok(build_error_response(ErrorCode::UnknownError.into(), &format!("failed to parse inventory_source_uuid: {}", e))),
+    };
     // Process the transaction
     let result = match SYSTEMS.transaction_service.process_player_transaction_id(
         SYSTEMS.inventory_service.clone(),
@@ -42,7 +39,6 @@ async fn handle(
         Ok(result) => result,
         Err(error_code) => {
             return Ok(build_error_response(
-                message_id,
                 error_code.into(),
                 "Transaction failed.",
             ));
@@ -55,7 +51,7 @@ async fn handle(
         rewarded: result.rewarded,
     };
 
-    Ok(encode_ok(message_id, response)?)
+    encode_ok(&response)
 }
 
 pub async fn get_transaction_definition(
