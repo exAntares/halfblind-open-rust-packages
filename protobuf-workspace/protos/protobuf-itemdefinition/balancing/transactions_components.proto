@@ -7,6 +7,22 @@ import "protobuf-itemdefinition/data/item_definition.proto";
 
 message TransactionComponent {}
 
+message TransactionRequiredItemComponent {
+    TransactionItem required = 1;
+}
+
+message TransactionRequiredNotHavingItemComponent {
+    TransactionItem required_not_having = 1;
+}
+
+message TransactionConsumedItemComponent {
+    TransactionItem consumed = 1;
+}
+
+message TransactionRewardedItemComponent {
+    TransactionReward rewarded = 1;
+}
+
 message TransactionRequiredItemsComponent {
     repeated TransactionItem required = 1;
 }

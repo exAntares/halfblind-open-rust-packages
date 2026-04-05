@@ -128,6 +128,26 @@ pub struct ItemDefinitionsResponse {
 pub struct TransactionComponent {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionRequiredItemComponent {
+    #[prost(message, optional, tag="1")]
+    pub required: ::core::option::Option<TransactionItem>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionRequiredNotHavingItemComponent {
+    #[prost(message, optional, tag="1")]
+    pub required_not_having: ::core::option::Option<TransactionItem>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionConsumedItemComponent {
+    #[prost(message, optional, tag="1")]
+    pub consumed: ::core::option::Option<TransactionItem>,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct TransactionRewardedItemComponent {
+    #[prost(message, optional, tag="1")]
+    pub rewarded: ::core::option::Option<TransactionReward>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TransactionRequiredItemsComponent {
     #[prost(message, repeated, tag="1")]
     pub required: ::prost::alloc::vec::Vec<TransactionItem>,
