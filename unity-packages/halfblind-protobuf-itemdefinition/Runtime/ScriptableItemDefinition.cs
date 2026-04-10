@@ -4,7 +4,7 @@ using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace ItemDefinitions {
-    public sealed class ScriptableItemDefinition : ScriptableObject {
+    public partial class ScriptableItemDefinition : ScriptableObject {
         [ShowInInspector] public ulong Id => ulong.Parse(name.Split('.')[0]);
 
         [SerializeReference] public List<ISerializedIMessage> Components = new();
