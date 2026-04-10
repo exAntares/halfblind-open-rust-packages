@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Google.Protobuf;
-using ItemDefinitions;
+using HalfBlind.ItemDefinitions;
 using ProtobufItemdefinition;
 using Sirenix.OdinInspector;
 using UnityEditor;
