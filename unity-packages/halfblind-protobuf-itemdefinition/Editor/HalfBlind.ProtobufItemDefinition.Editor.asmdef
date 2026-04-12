@@ -1,5 +1,5 @@
 {
-    "name": "ScriptableItemDefinition.Editor",
+    "name": "HalfBlind.ProtobufItemDefinition.Editor",
     "rootNamespace": "",
     "references": [
         "GUID:72452806046574900946e9a189403f9e",

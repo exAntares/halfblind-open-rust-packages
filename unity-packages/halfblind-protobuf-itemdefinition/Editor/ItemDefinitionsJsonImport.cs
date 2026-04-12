@@ -20,11 +20,17 @@ namespace BalancingEditor {
 
         [SerializeField]
         private DefaultAsset _directoryForNewAssets = null!;
-        
+
         [Button]
-        private void ImportItemDefinitions() {
-            var newAssetPath = AssetDatabase.GetAssetPath(_directoryForNewAssets);
-            
+        public void ImportAndExportItemDefinitions() {
+            var directoryPath = AssetDatabase.GetAssetPath(_directoryForNewAssets);
+            var assetPath = AssetDatabase.GetAssetPath(this);
+            var json = File.ReadAllText(_jsonImportPath);
+            ImportItemDefinitions(directoryPath, assetPath, json);
+            _exporter.ExportItemDefinitions();
+        }
+
+        public static void ImportItemDefinitions(string directoryPath, string assetPath, string json) {
             var allProtobufTypes = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(x => x.GetTypes())
                 .Where(x => typeof(IMessage).IsAssignableFrom(x) && !x.IsAbstract)
@@ -35,23 +41,22 @@ namespace BalancingEditor {
                 .Where(x => typeof(ISerializedIMessage).IsAssignableFrom(x))
                 .ToDictionary(x => x.FullName, x => x);
             
-            var assetPath = AssetDatabase.GetAssetPath(this);
             var directoryName = Path.GetDirectoryName(assetPath);
             var itemDefinitions = AssetDatabase.FindAssets($"t:{nameof(ScriptableObject)}", new[] { directoryName })
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .Select(AssetDatabase.LoadAssetAtPath<ScriptableItemDefinition>)
                 .Where(x => x is not null)
                 .ToDictionary(x => x.Id, x => x);
-            var json = File.ReadAllText(_jsonImportPath);
+            
             var itemDefinitionJsons = JsonConvert.DeserializeObject<Dictionary<ulong, ItemDefinitionJson>>(json);
             if (itemDefinitionJsons == null) {
-                Debug.LogError($"Failed to deserialize item definitions from {_jsonImportPath}", this);
+                Debug.LogError($"Failed to deserialize item definitions from json:\n{json}");
                 return;
             }
             foreach (var (itemId, itemDefinitionJson) in itemDefinitionJsons) {
                 string expectedName = $"{itemId}{(string.IsNullOrEmpty(itemDefinitionJson.Name) ? string.Empty : $".{itemDefinitionJson.Name}")}";
                 if (!itemDefinitions.TryGetValue(itemId, out var itemDefinition)) {
-                    Debug.Log($"Creating new asset for ItemId:'{itemId}'", this);
+                    Debug.Log($"Creating new asset for ItemId:'{itemId}'");
                     var newItemInstance = CreateInstance<ScriptableItemDefinition>();
                     newItemInstance.name = expectedName;
                     newItemInstance.Components = itemDefinitionJson.components
@@ -59,7 +64,7 @@ namespace BalancingEditor {
                         .Where(x => x != null)
                         .Cast<ISerializedIMessage>()
                         .ToList();
-                    AssetDatabase.CreateAsset(newItemInstance, $"{newAssetPath}/{newItemInstance.name}.asset");
+                    AssetDatabase.CreateAsset(newItemInstance, $"{directoryPath}/{newItemInstance.name}.asset");
                     continue;                       
                 }
                 // Rename asset if name doesn't match
@@ -67,14 +72,14 @@ namespace BalancingEditor {
                     var path = AssetDatabase.GetAssetPath(itemDefinition);
                     var error = AssetDatabase.RenameAsset(path, expectedName);
                     if (!string.IsNullOrEmpty(error)) {
-                        Debug.LogError($"Failed to rename item definition {itemId}", this);
+                        Debug.LogError($"Failed to rename item definition {itemId}");
                     }
                 }
                 
                 foreach (var (componentTypeName, componentData) in itemDefinitionJson.components) {
                     var componentTypeNameFull = $"{componentTypeName}Component";
                     if (!allProtobufTypes.TryGetValue(componentTypeNameFull, out var protoType)) {
-                        Debug.LogError($"Failed to find component type {componentTypeNameFull}", this);
+                        Debug.LogError($"Failed to find component type {componentTypeNameFull}");
                         continue;
                     }
 
@@ -99,22 +104,21 @@ namespace BalancingEditor {
                             EditorUtility.SetDirty(itemDefinition);
                         }
                         else {
-                            Debug.LogError($"Failed to convert component {componentTypeName} to ISerializedIMessage", this);
+                            Debug.LogError($"Failed to convert component {componentTypeName} to ISerializedIMessage");
                         }
                     }
                 }
             }
-            _exporter.ExportItemDefinitions();
             AssetDatabase.Refresh();
             AssetDatabase.SaveAssets();
-            Debug.Log($"Successfully imported all item definitions to {_jsonImportPath}", this);
+            Debug.Log("Successfully imported all item definitions");
         }
 
-        private ISerializedIMessage? ConvertToISerializedMessage(string componentTypeName,
+        private static ISerializedIMessage? ConvertToISerializedMessage(string componentTypeName,
             Dictionary<string, object> componentData, Dictionary<string, Type> allTypesByFullName) {
             var componentTypeFullName = $"{componentTypeName}ComponentSerializableClass";
             if (!allTypesByFullName.TryGetValue(componentTypeFullName, out var protoType)) {
-                Debug.LogError($"Failed to find component type {componentTypeFullName}", this);
+                Debug.LogError($"Failed to find component type {componentTypeFullName}");
                 return null;
             }
             var componentJson = JsonConvert.SerializeObject(componentData);
