@@ -16,18 +16,18 @@ async fn handle(
         _ctx: Arc<ConnectionContext>,
     ) -> Result<ProtoResponse, ProtoResponse> {
     let db_pool = SYSTEMS.database_service.get_db_pool();
-    let player_uuid = match Uuid::parse_str(&req.player_uuid) {
+    let device_uuid = match Uuid::parse_str(&req.device_id) {
         Ok(player_uuid) => player_uuid,
         Err(_) => {
             return Ok(build_error_response(
                 ErrorCode::InvalidRequest as i32,
-                &format!("Register is not a valid UUID {}", req.player_uuid),
+                &format!("Register is not a valid UUID {}", req.device_id),
             ));
         }
     };
 
-    let player_exists = match sqlx::query("SELECT EXISTS(SELECT 1 FROM players WHERE uuid = $1)")
-        .bind(player_uuid)
+    let player_exists = match sqlx::query("SELECT EXISTS(SELECT 1 FROM players WHERE device_id = $1)")
+        .bind(device_uuid)
         .fetch_one(db_pool.as_ref())
         .await {
         Ok(x) => x,
@@ -58,18 +58,16 @@ async fn handle(
         // Generate new UUID token
         password = Uuid::new_v4();
     }
-    let _ = match match db::db::create_player_or_not(&db_pool, player_uuid, password).await {
-        Ok(_) => Ok(true),
-        Err(e) if e.to_string().contains("duplicate key") => Ok(false),
-        Err(e) => Err(e),
-    } {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(build_error_response(
-                ErrorCode::UnknownError as i32,
-                &format!("Failed to create player: {}", e),
-            ));
-        }
+    let player_uuid = match db::db::try_create_player(&db_pool, device_uuid, password).await {
+        Ok(player_uuid) => player_uuid,
+        Err(e) if e.to_string().contains("duplicate key") => return Err(build_error_response(
+            ErrorCode::UnknownError as i32,
+            &format!("Failed to create player duplicate key: {}", e),
+        )),
+        Err(e) => return Err(build_error_response(
+            ErrorCode::UnknownError as i32,
+            &format!("Failed to create player: {}", e),
+        )),
     };
 
     if let Err(e) = add_default_inventory_to_player(player_uuid, SYSTEMS.clone()).await {

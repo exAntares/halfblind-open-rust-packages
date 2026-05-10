@@ -25,13 +25,13 @@ namespace ProtobufNetwork {
       byte[] descriptorData = global::System.Convert.FromBase64String(
           string.Concat(
             "Ci9wcm90b2J1Zi1uZXR3b3JrL25ldHdvcmsvcmVnaXN0ZXJfcmVxdWVzdC5w",
-            "cm90bxIQcHJvdG9idWZfbmV0d29yayImCg9SZWdpc3RlclJlcXVlc3QSEwoL",
-            "cGxheWVyX3V1aWQYASABKAkiNgoQUmVnaXN0ZXJSZXNwb25zZRITCgtwbGF5",
-            "ZXJfdXVpZBgBIAEoCRINCgV0b2tlbhgCIAEoCWIGcHJvdG8z"));
+            "cm90bxIQcHJvdG9idWZfbmV0d29yayIkCg9SZWdpc3RlclJlcXVlc3QSEQoJ",
+            "ZGV2aWNlX2lkGAEgASgJIjYKEFJlZ2lzdGVyUmVzcG9uc2USEwoLcGxheWVy",
+            "X3V1aWQYASABKAkSDQoFdG9rZW4YAiABKAliBnByb3RvMw=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufNetwork.RegisterRequest), global::ProtobufNetwork.RegisterRequest.Parser, new[]{ "PlayerUuid" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufNetwork.RegisterRequest), global::ProtobufNetwork.RegisterRequest.Parser, new[]{ "DeviceId" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::ProtobufNetwork.RegisterResponse), global::ProtobufNetwork.RegisterResponse.Parser, new[]{ "PlayerUuid", "Token" }, null, null, null, null)
           }));
     }
@@ -67,7 +67,7 @@ namespace ProtobufNetwork {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public RegisterRequest(RegisterRequest other) : this() {
-      playerUuid_ = other.playerUuid_;
+      deviceId_ = other.deviceId_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -76,14 +76,14 @@ namespace ProtobufNetwork {
       return new RegisterRequest(this);
     }
 
-    /// <summary>Field number for the "player_uuid" field.</summary>
-    public const int PlayerUuidFieldNumber = 1;
-    private string playerUuid_ = "";
+    /// <summary>Field number for the "device_id" field.</summary>
+    public const int DeviceIdFieldNumber = 1;
+    private string deviceId_ = "";
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public string PlayerUuid {
-      get { return playerUuid_; }
+    public string DeviceId {
+      get { return deviceId_; }
       set {
-        playerUuid_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+        deviceId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
       }
     }
 
@@ -100,14 +100,14 @@ namespace ProtobufNetwork {
       if (ReferenceEquals(other, this)) {
         return true;
       }
-      if (PlayerUuid != other.PlayerUuid) return false;
+      if (DeviceId != other.DeviceId) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public override int GetHashCode() {
       int hash = 1;
-      if (PlayerUuid.Length != 0) hash ^= PlayerUuid.GetHashCode();
+      if (DeviceId.Length != 0) hash ^= DeviceId.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -121,9 +121,9 @@ namespace ProtobufNetwork {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public void WriteTo(pb::CodedOutputStream output) {
-      if (PlayerUuid.Length != 0) {
+      if (DeviceId.Length != 0) {
         output.WriteRawTag(10);
-        output.WriteString(PlayerUuid);
+        output.WriteString(DeviceId);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -133,8 +133,8 @@ namespace ProtobufNetwork {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int CalculateSize() {
       int size = 0;
-      if (PlayerUuid.Length != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeStringSize(PlayerUuid);
+      if (DeviceId.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(DeviceId);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -147,8 +147,8 @@ namespace ProtobufNetwork {
       if (other == null) {
         return;
       }
-      if (other.PlayerUuid.Length != 0) {
-        PlayerUuid = other.PlayerUuid;
+      if (other.DeviceId.Length != 0) {
+        DeviceId = other.DeviceId;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -162,7 +162,7 @@ namespace ProtobufNetwork {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 10: {
-            PlayerUuid = input.ReadString();
+            DeviceId = input.ReadString();
             break;
           }
         }

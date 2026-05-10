@@ -1,19 +1,21 @@
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-pub async fn create_player_or_not(
+pub async fn try_create_player(
     pool: &PgPool,
-    user_id: Uuid,
+    device_uuid: Uuid,
     auth_token: Uuid,
-) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        "INSERT INTO players (uuid, auth_token) 
+) -> Result<Uuid, sqlx::Error> {
+    let row = sqlx::query(
+        "INSERT INTO players (device_uuid, auth_token) 
          VALUES ($1, $2)
-         ON CONFLICT (uuid) DO NOTHING",
-        user_id,
-        auth_token
+         ON CONFLICT (device_uuid) DO NOTHING
+         RETURNING uuid"
     )
-    .execute(pool)
-    .await?;
-    Ok(())
+        .bind(device_uuid)
+        .bind(auth_token)
+        .fetch_one(pool)
+        .await?;
+    let player_uuid = row.get::<Uuid, _>("uuid");
+    Ok(player_uuid)
 }

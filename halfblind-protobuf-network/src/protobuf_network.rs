@@ -4,7 +4,7 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRequest {
     #[prost(string, tag="1")]
-    pub player_uuid: ::prost::alloc::string::String,
+    pub device_id: ::prost::alloc::string::String,
 }
 /// Server responds with a token if registration succeeds
 #[derive(Clone, PartialEq, ::prost::Message)]

@@ -4,7 +4,7 @@ package protobuf_network;
 
 // Register a new user with a unique ID
 message RegisterRequest {
-  string player_uuid = 1;
+  string device_id = 1;
 }
 
 // Server responds with a token if registration succeeds
