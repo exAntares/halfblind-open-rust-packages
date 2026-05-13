@@ -21,7 +21,7 @@ impl RandomService for RandomServiceImpl {
     }
 
     fn random_range_f32(&self, min: f32, max: f32) -> f32 {
-        self.rng.lock().unwrap().random_range(min..max)
+        self.rng.lock().unwrap().random_range(min..=max)
     }
 
     fn random_range_u64(&self, min: u64, max: u64) -> u64 {
