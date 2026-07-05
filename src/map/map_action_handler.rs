@@ -169,19 +169,6 @@ impl RequestHandler for MapActionHandler {
                         "Transaction does not exist",
                     ));
                 };
-                match SYSTEMS.transaction_service.process_player_transaction_id(
-                    SYSTEMS.inventory_service.clone(),
-                    SYSTEMS.database_service.clone(),
-                    SYSTEMS.random_service.clone(),
-                    player_uuid,
-                    character_uuid,
-                    teleport.transaction_id,
-                ).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        return Ok(build_error_response(e.into(), &"Failed transaction".to_string()))
-                    }
-                };
 
                 let inventory_lock = match SYSTEMS
                     .inventory_service
@@ -190,16 +177,25 @@ impl RequestHandler for MapActionHandler {
                     Ok(x) => x,
                     Err(e) => return Err(build_error_response(ErrorCode::UnknownError.into(), &format!("Failed to get character inventory {}", e))),
                 };
+                let mut inventory_rw_lock = inventory_lock.write().await;
+                match SYSTEMS.transaction_service.process_inventory_transaction_id(
+                    SYSTEMS.inventory_service.clone(),
+                    SYSTEMS.database_service.clone(),
+                    SYSTEMS.random_service.clone(),
+                    &mut inventory_rw_lock,
+                    player_uuid,
+                    teleport.transaction_id,
+                ).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        return Ok(build_error_response(e.into(), &"Failed transaction".to_string()))
+                    }
+                };
 
-                let visible_inventory: Vec<InventoryItem>;
-                {
-                    // inventory read lock
-                    let inventory = inventory_lock.read().await;
-                    visible_inventory = filter_visible_inventory(inventory.as_slice())
-                        .into_iter()
-                        .cloned()
-                        .collect();
-                } // inventory read lock release
+                let visible_inventory: Vec<InventoryItem> = filter_visible_inventory(inventory_rw_lock.as_slice())
+                    .into_iter()
+                    .cloned()
+                    .collect();
 
                 let map_id = teleport.connected_map_id;
                 match SYSTEMS.maps_service

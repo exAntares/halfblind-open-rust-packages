@@ -15,7 +15,7 @@ async fn handle(
     ) -> Result<ProtoResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
     if let Err(error_code) = get_transaction_definition(req.transaction_id).await {
-        return Ok(build_error_response(
+        return Err(build_error_response(
             ItemsErrorCode::TransactionInvalid.into(),
                       "Transaction definition not found.",
                   ));
@@ -23,15 +23,23 @@ async fn handle(
 
     let secondary_key_uuid = match Uuid::parse_str(&req.inventory_source_uuid) {
         Ok(x) => x,
-        Err(e) => return Ok(build_error_response(ErrorCode::UnknownError.into(), &format!("failed to parse inventory_source_uuid: {}", e))),
+        Err(e) => return Err(build_error_response(ErrorCode::UnknownError.into(), &format!("failed to parse inventory_source_uuid: {}", e))),
     };
+    let inventory_arc = match SYSTEMS.inventory_service.get_inventory(player_uuid, secondary_key_uuid).await {
+        Ok(inventory) => inventory,
+        Err(e) => {
+            eprintln!("error trying to get items from player {}", e);
+            return Err(build_error_response(ErrorCode::UnknownError.into(), &format!("failed to get inventory: {}", e)));
+        }
+    };
+    let mut inventory_rwlock = inventory_arc.write().await;
     // Process the transaction
-    let result = match SYSTEMS.transaction_service.process_player_transaction_id(
+    let result = match SYSTEMS.transaction_service.process_inventory_transaction_id(
         SYSTEMS.inventory_service.clone(),
         SYSTEMS.database_service.clone(),
         SYSTEMS.random_service.clone(),
+        &mut inventory_rwlock,
         player_uuid,
-        secondary_key_uuid,
         req.transaction_id,
     )
         .await

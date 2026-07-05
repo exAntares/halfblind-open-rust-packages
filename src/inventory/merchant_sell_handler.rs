@@ -66,7 +66,7 @@ impl RequestHandler for MerchantSellItemHandler {
                 (to_sell, gains)
             }
         };
-        let inventory_lock = match SYSTEMS
+        let inventory_arc = match SYSTEMS
             .inventory_service
             .get_inventory(player_uuid, character_uuid)
             .await
@@ -79,16 +79,12 @@ impl RequestHandler for MerchantSellItemHandler {
                 ));
             }
         };
+        let mut inventory_rw_lock = inventory_arc.write().await;
         match SYSTEMS.item_definition_lookup_service.is_stackable_component(&to_sell.item_definition_id) {
             None => {
                 // Non-stackable item check for the instance id
-                match inventory_lock.read().await.iter().find(|x| x.item_instance_id == to_sell.item_instance_id) {
-                    None => {
-                        return Ok(build_error_response(
-                            ItemsErrorCode::NotEnoughItems.into(),
-                            "Cannot sell non-stackable items that are already in inventory",
-                        ));
-                    }
+                match inventory_rw_lock.iter().find(|x| x.item_instance_id == to_sell.item_instance_id) {
+                    None => return Ok(build_error_response(ItemsErrorCode::NotEnoughItems.into(), "Cannot sell non-stackable items that are already in inventory")),
                     Some(item) => {
                         if item.amount < to_sell.amount {
                             return Ok(build_error_response(
@@ -100,13 +96,8 @@ impl RequestHandler for MerchantSellItemHandler {
                 };
             }
             Some(_) => {
-                match inventory_lock.read().await.iter().find(|x| x.item_definition_id == to_sell.item_definition_id) {
-                    None => {
-                        return Ok(build_error_response(
-                            ItemsErrorCode::NotEnoughItems.into(),
-                            "Cannot sell items that are not already in inventory",
-                        ));
-                    }
+                match inventory_rw_lock.iter().find(|x| x.item_definition_id == to_sell.item_definition_id) {
+                    None => return Ok(build_error_response(ItemsErrorCode::NotEnoughItems.into(), "Cannot sell items that are not already in inventory")),
                     Some(item) => {
                         if item.amount < to_sell.amount {
                             return Ok(build_error_response(
@@ -133,12 +124,12 @@ impl RequestHandler for MerchantSellItemHandler {
             value_max: 0,
             duration: 0,
         }];
-        let transaction_result = match SYSTEMS.transaction_service.process_player_transaction(
+        let transaction_result = match SYSTEMS.transaction_service.process_inventory_transaction(
             SYSTEMS.inventory_service.clone(),
             SYSTEMS.database_service.clone(),
             SYSTEMS.random_service.clone(),
+            &mut inventory_rw_lock,
             player_uuid,
-            character_uuid,
             None,
             None,
             Some(consumed),

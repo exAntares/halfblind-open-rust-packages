@@ -11,6 +11,7 @@ use protobuf_itemdefinition::{convert_transaction_consumed, convert_transaction_
 use sqlx::{Postgres, Transaction};
 use std::error::Error;
 use std::sync::Arc;
+use tokio::sync::RwLockWriteGuard;
 use uuid::Uuid;
 
 #[derive(Default)]
@@ -100,13 +101,13 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         eprintln!("Failed to collect items, they will disappear {:?}", unable_to_collect_items);
     }
 
-    async fn process_player_transaction_id(
+    async fn process_inventory_transaction_id<'a>(
         &self,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
+        player_inventory: &'a mut RwLockWriteGuard<'_, Vec<InventoryItem>>,
         player_uuid: Uuid,
-        secondary_uuid: Uuid,
         transaction_id: u64,
     ) -> Result<TransactionResult<InventoryItem>, i32> {
         let random_rewarded_items: Option<Vec<PoolWeightedItemsComponent>> = convert_transaction_rewarded_random(SYSTEMS.item_definition_lookup_service.transaction_rewarded_items_random_component(&transaction_id))
@@ -114,12 +115,12 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
                 let pool = SYSTEMS.item_definition_lookup_service.pool_weighted_items_component(&value.id)?;
                 Some(pool.as_ref().clone())
             }).collect::<Vec<_>>());
-        self.process_player_transaction(
+        self.process_inventory_transaction(
             inventory_service,
             database_service,
             random_service,
+            player_inventory,
             player_uuid,
-            secondary_uuid,
             convert_transaction_required_items(SYSTEMS.item_definition_lookup_service.transaction_required_items_component(&transaction_id)),
             convert_transaction_required_not_items(SYSTEMS.item_definition_lookup_service.transaction_required_not_having_items_component(&transaction_id)),
             convert_transaction_consumed(SYSTEMS.item_definition_lookup_service.transaction_consumed_items_component(&transaction_id)),
@@ -129,30 +130,20 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
     }
 
     /// Executes a `TransactionComponent` using the player's inventory
-    async fn process_player_transaction(
+    async fn process_inventory_transaction<'a>(
         &self,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
+        player_inventory: &'a mut RwLockWriteGuard<'_, Vec<InventoryItem>>,
         player_uuid: Uuid,
-        secondary_uuid: Uuid,
         required: Option<Vec<TransactionItem>>,
         required_negative: Option<Vec<TransactionItem>>,
         consumed: Option<Vec<TransactionItem>>,
         rewarded: Option<Vec<TransactionReward>>,
-        rewards_random: Option<Vec<protobuf_itemdefinition::PoolWeightedItemsComponent>>,
+        rewards_random: Option<Vec<PoolWeightedItemsComponent>>,
     ) -> Result<TransactionResult<InventoryItem>, i32> {
-        let inventory_arc = match inventory_service.get_inventory(player_uuid, secondary_uuid).await {
-            Ok(inventory) => inventory,
-            Err(e) => {
-                eprintln!("error trying to get items from player {}", e);
-                return Err(ErrorCode::UnknownError.into());
-            }
-        };
-
         { // Acquire read lock on inventory
-            let player_inventory = inventory_arc.read().await;
-
             if let Some(required) = &required && !self.has_enough_item_definitions(&player_inventory, required) {
                 return Err(ItemsErrorCode::TransactionRequirementsNotMet.into());
             }
@@ -169,10 +160,9 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         let mut rewarded_items = vec![];
         let mut transaction_instance_id = Vec::new();
         { // Acquire write lock on inventory
-            let mut player_inventory = inventory_arc.write().await;
             // Process consumed items
             if let Some(consumed) = &consumed {
-                if let Err(e) = consume_items_unchecked(&mut player_inventory, consumed).await {
+                if let Err(e) = consume_items_unchecked(&mut **player_inventory, consumed).await {
                     eprintln!("error trying to consume items from player {}", e);
                     return Err(ItemsErrorCode::NotEnoughItems.into());
                 }
@@ -199,7 +189,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
                 rewarded_items = match process_rewarded_items_immediate(
                     inventory_service.clone(),
                     random_service.clone(),
-                    &mut player_inventory,
+                    &mut **player_inventory,
                     player_uuid,
                     immediate_items,
                     &rewards_random_tmp,
@@ -233,17 +223,9 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
                 };
             }// release database write lock
         } // release inventory write lock
-        // Get updated inventory
-        let updated_inventory = match inventory_service.get_inventory(player_uuid, secondary_uuid).await {
-            Ok(inventory) => inventory,
-            Err(e) => {
-                eprintln!("error trying to get items from player db {}", e);
-                return Err(ErrorCode::UnknownError.into());
-            }
-        };
         Ok(TransactionResult {
             transaction_instance_id,
-            inventory: updated_inventory.read().await.clone(),
+            inventory: player_inventory.clone(),
             rewarded: rewarded_items,
         })
     }

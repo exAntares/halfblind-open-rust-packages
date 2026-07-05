@@ -42,12 +42,17 @@ impl RequestHandler for MerchantBuyItemHandler {
                     ))
                 } else {
                     let transaction = merchant_component.available_transactions[req.item_index as usize].clone();
-                    let result = match SYSTEMS.transaction_service.process_player_transaction_id(
+                    let inventory_arc = match SYSTEMS.inventory_service.get_inventory(player_uuid, character_uuid).await {
+                        Ok(inventory_lock) => inventory_lock,
+                        Err(e) => return Ok(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), "Inventory does not exist")),
+                    };
+                    let mut inventory_rw_lock = inventory_arc.write().await;
+                    let result = match SYSTEMS.transaction_service.process_inventory_transaction_id(
                         SYSTEMS.inventory_service.clone(),
                         SYSTEMS.database_service.clone(),
                         SYSTEMS.random_service.clone(),
+                        &mut inventory_rw_lock,
                         player_uuid,
-                        character_uuid,
                         transaction.id,
                     )
                         .await
