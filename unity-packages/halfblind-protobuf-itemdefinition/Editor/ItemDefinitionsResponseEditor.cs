@@ -4,23 +4,24 @@ using System.IO;
 using System.Linq;
 using Google.Protobuf;
 using HalfBlind.ItemDefinitions;
+using Newtonsoft.Json;
 using ProtobufItemdefinition;
 using Sirenix.OdinInspector;
 using UnityEditor;
 using UnityEngine;
-using File = UnityEngine.Windows.File;
 
 namespace BalancingEditor {
     [CreateAssetMenu]
     public sealed class ItemDefinitionsResponseEditor : ScriptableObject {
         [SerializeField] [Sirenix.OdinInspector.FilePath]
         private string _path = string.Empty;
-
+        
         [Button]
         public void ExportItemDefinitions() {
             var assetPath = AssetDatabase.GetAssetPath(this);
             var directoryName = Path.GetDirectoryName(assetPath);
-            var items = new ItemDefinitionsResponse();
+            var response = new ItemDefinitionsResponse();
+            var sortedDictionary = new SortedDictionary<ulong, Dictionary<string, IMessage>>();
             var scriptableItemDefinitions = AssetDatabase.FindAssets($"t:{nameof(ScriptableObject)}", new[] { directoryName })
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .Select(AssetDatabase.LoadAssetAtPath<ScriptableItemDefinition>)
@@ -28,24 +29,27 @@ namespace BalancingEditor {
                 .ToArray();
             var itemDefinitions = scriptableItemDefinitions
                 .Select(x => {
-                    var result = new ItemDefinition {
+                    var itemDefinition = new ItemDefinition {
                         Id = x.Id,
                     };
-                    foreach (var scriptableProtobufMessage in x.Components) {
+                    var messages = x.Components.Select(scriptableProtobufMessage => {
                         if (scriptableProtobufMessage == null) {
                             Debug.LogError($"Null component found in item definition {x.Id}", this);
                             throw new NullReferenceException();
                         }
                         try {
-                            var message = scriptableProtobufMessage.GetMessage();
-                            result.AnyComponents.Add(message);
+                            return scriptableProtobufMessage.GetMessage();
                         }
                         catch (Exception e) {
                             Debug.LogError("Failed to serialize component " + scriptableProtobufMessage.GetType().Name + " for item definition " + x.Id + ": " + e, x);
                             throw;
                         }
+                    }).ToList();
+                    sortedDictionary[x.Id] = messages.ToDictionary(message => message.GetType().Name, message => message);
+                    foreach (var message in messages) {
+                        itemDefinition.AnyComponents.Add(message);
                     }
-                    return result;
+                    return itemDefinition;
                 })
                 .ToArray();
             // Check for duplicates
@@ -57,9 +61,12 @@ namespace BalancingEditor {
                 }
                 throw new Exception("Found errors in item definitions. See log for details.");
             }
-            items.Definitions.Add(itemDefinitions);
-            var byteArray = items.ToByteArray();
+            response.Definitions.Add(itemDefinitions);
+            var byteArray = response.ToByteArray();
             File.WriteAllBytes(_path, byteArray);
+            var jsonPath = _path.Replace(Path.GetExtension(_path), ".json");
+            var jsonValues = JsonConvert.SerializeObject(sortedDictionary, Formatting.Indented);
+            File.WriteAllText(jsonPath, jsonValues);
             AssetDatabase.Refresh();
             Debug.Log($"Successfully exported all item definitions to {_path}", this);
         }
