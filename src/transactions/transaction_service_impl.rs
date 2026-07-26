@@ -11,7 +11,6 @@ use protobuf_itemdefinition::{convert_transaction_consumed, convert_transaction_
 use sqlx::{Postgres, Transaction};
 use std::error::Error;
 use std::sync::Arc;
-use tokio::sync::RwLockWriteGuard;
 use uuid::Uuid;
 
 #[derive(Default)]
@@ -101,12 +100,12 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         eprintln!("Failed to collect items, they will disappear {:?}", unable_to_collect_items);
     }
 
-    async fn process_inventory_transaction_id<'a>(
+    async fn process_inventory_transaction_id(
         &self,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        player_inventory: &'a mut RwLockWriteGuard<'_, Vec<InventoryItem>>,
+        player_inventory: &mut Vec<InventoryItem>,
         player_uuid: Uuid,
         transaction_id: u64,
     ) -> Result<TransactionResult<InventoryItem>, i32> {
@@ -130,12 +129,12 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
     }
 
     /// Executes a `TransactionComponent` using the player's inventory
-    async fn process_inventory_transaction<'a>(
+    async fn process_inventory_transaction(
         &self,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        player_inventory: &'a mut RwLockWriteGuard<'_, Vec<InventoryItem>>,
+        player_inventory: &mut Vec<InventoryItem>,
         player_uuid: Uuid,
         required: Option<Vec<TransactionItem>>,
         required_negative: Option<Vec<TransactionItem>>,
@@ -144,15 +143,15 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         rewards_random: Option<Vec<PoolWeightedItemsComponent>>,
     ) -> Result<TransactionResult<InventoryItem>, i32> {
         { // Acquire read lock on inventory
-            if let Some(required) = &required && !self.has_enough_item_definitions(&player_inventory, required) {
+            if let Some(required) = &required && !self.has_enough_item_definitions(player_inventory, required) {
                 return Err(ItemsErrorCode::TransactionRequirementsNotMet.into());
             }
 
-            if let Some(required_negative) = required_negative && self.has_any_item_definitions(&player_inventory, &required_negative) {
+            if let Some(required_negative) = required_negative && self.has_any_item_definitions(player_inventory, &required_negative) {
                 return Err(ItemsErrorCode::TransactionRequirementsNotMet.into());
             }
 
-            if let Some(consumed) = &consumed && !self.has_enough_item_definitions(&player_inventory, consumed) {
+            if let Some(consumed) = &consumed && !self.has_enough_item_definitions(player_inventory, consumed) {
                 return Err(ItemsErrorCode::NotEnoughItems.into());
             }
         } // release read lock
@@ -162,7 +161,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         { // Acquire write lock on inventory
             // Process consumed items
             if let Some(consumed) = &consumed {
-                if let Err(e) = consume_items_unchecked(&mut **player_inventory, consumed).await {
+                if let Err(e) = consume_items_unchecked(player_inventory, consumed).await {
                     eprintln!("error trying to consume items from player {}", e);
                     return Err(ItemsErrorCode::NotEnoughItems.into());
                 }
@@ -189,7 +188,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
                 rewarded_items = match process_rewarded_items_immediate(
                     inventory_service.clone(),
                     random_service.clone(),
-                    &mut **player_inventory,
+                    player_inventory,
                     player_uuid,
                     immediate_items,
                     &rewards_random_tmp,

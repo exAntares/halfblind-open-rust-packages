@@ -5,7 +5,6 @@ use halfblind_inventory_service::InventoryService;
 use halfblind_random::RandomService;
 use protobuf_itemdefinition::{TransactionItem, TransactionReward};
 use std::sync::Arc;
-use tokio::sync::RwLockWriteGuard;
 use uuid::Uuid;
 
 #[async_trait]
@@ -31,12 +30,12 @@ pub trait TransactionService<T> {
         random_service: Arc<dyn RandomService + Send + Sync>,
     );
     
-    async fn process_inventory_transaction<'a>(
+    async fn process_inventory_transaction(
         &self,
         inventory_service: Arc<dyn InventoryService<T> + Send + Sync>,
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        player_inventory: &'a mut RwLockWriteGuard<'_, Vec<T>>,
+        player_inventory: &mut Vec<T>,
         player_uuid: Uuid,
         required: Option<Vec<TransactionItem>>,
         required_negative: Option<Vec<TransactionItem>>,
@@ -45,12 +44,12 @@ pub trait TransactionService<T> {
         rewards_random: Option<Vec<protobuf_itemdefinition::PoolWeightedItemsComponent>>,
     ) -> Result<TransactionResult<T>, i32>;
     
-    async fn process_inventory_transaction_id<'a>(
+    async fn process_inventory_transaction_id(
         &self,
         inventory_service: Arc<dyn InventoryService<T> + Send + Sync>,
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        player_inventory: &'a mut RwLockWriteGuard<'_, Vec<T>>,
+        player_inventory: &mut Vec<T>,
         player_uuid: Uuid,
         transaction_id: u64,
     ) -> Result<TransactionResult<T>, i32>;
