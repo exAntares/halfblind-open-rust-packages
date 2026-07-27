@@ -1,4 +1,4 @@
-use crate::systems::systems::Systems;
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
 use proto_gen::GameErrorCode;
@@ -36,7 +36,7 @@ use uuid::Uuid;
 /// ```
 pub async fn validate_character_and_player_uuid(
     ctx: &Arc<ConnectionContext>,
-    systems: Arc<Systems>,
+    systems: Arc<Services>,
     character_uuid_str: String,
 ) -> Result<(Uuid, Uuid), ProtoResponse> {
     // Get and validate player UUID

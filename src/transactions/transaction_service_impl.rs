@@ -1,4 +1,4 @@
-use crate::systems::systems::SYSTEMS;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use halfblind_database_service::DatabaseService;
@@ -14,7 +14,9 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Default)]
-pub struct TransactionServiceImpl;
+pub struct TransactionServiceImpl{
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+}
 
 #[async_trait]
 impl TransactionService<InventoryItem> for TransactionServiceImpl {
@@ -109,9 +111,9 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         player_uuid: Uuid,
         transaction_id: u64,
     ) -> Result<TransactionResult<InventoryItem>, i32> {
-        let random_rewarded_items: Option<Vec<PoolWeightedItemsComponent>> = convert_transaction_rewarded_random(SYSTEMS.item_definition_lookup_service.transaction_rewarded_items_random_component(&transaction_id))
+        let random_rewarded_items: Option<Vec<PoolWeightedItemsComponent>> = convert_transaction_rewarded_random(self.item_definition_lookup_service.transaction_rewarded_items_random_component(&transaction_id))
             .map(|value| value.into_iter().filter_map(|value| {
-                let pool = SYSTEMS.item_definition_lookup_service.pool_weighted_items_component(&value.id)?;
+                let pool = self.item_definition_lookup_service.pool_weighted_items_component(&value.id)?;
                 Some(pool.as_ref().clone())
             }).collect::<Vec<_>>());
         self.process_inventory_transaction(
@@ -120,10 +122,10 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
             random_service,
             player_inventory,
             player_uuid,
-            convert_transaction_required_items(SYSTEMS.item_definition_lookup_service.transaction_required_items_component(&transaction_id)),
-            convert_transaction_required_not_items(SYSTEMS.item_definition_lookup_service.transaction_required_not_having_items_component(&transaction_id)),
-            convert_transaction_consumed(SYSTEMS.item_definition_lookup_service.transaction_consumed_items_component(&transaction_id)),
-            convert_transaction_rewarded(SYSTEMS.item_definition_lookup_service.transaction_rewarded_items_component(&transaction_id)),
+            convert_transaction_required_items(self.item_definition_lookup_service.transaction_required_items_component(&transaction_id)),
+            convert_transaction_required_not_items(self.item_definition_lookup_service.transaction_required_not_having_items_component(&transaction_id)),
+            convert_transaction_consumed(self.item_definition_lookup_service.transaction_consumed_items_component(&transaction_id)),
+            convert_transaction_rewarded(self.item_definition_lookup_service.transaction_rewarded_items_component(&transaction_id)),
             random_rewarded_items,
         ).await
     }

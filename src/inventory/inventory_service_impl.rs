@@ -1,8 +1,12 @@
+use crate::inventory::inventory_item_utils::{generate_inventory_item_for_player_default, try_aggregate_inventories};
 use crate::inventory::models::PlayerItem;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_database_service::DatabaseService;
 use halfblind_inventory_service::InventoryService;
+use halfblind_itemdefinitions_service::ItemDefinitionsService;
+use halfblind_random::RandomService;
 use proto_gen::{InventoryItem, InventoryItemAttribute};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -139,7 +143,8 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
         source: Vec<InventoryItem>,
         target: &mut Vec<InventoryItem>,
     ) -> Vec<InventoryItem> {
-        (self.try_aggregate_inventories_fn)(
+        try_aggregate_inventories(
+            self.item_definition_lookup_service.clone(),
             source,
             target,
         )
@@ -151,7 +156,10 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
         definition_id: u64,
         amount: u64,
     ) -> InventoryItem {
-        (self.generate_inventory_item_for_player_fn)(
+        generate_inventory_item_for_player_default(
+            self.item_definitions_service.clone(),
+            self.random_service.clone(),
+            self.item_definition_lookup_service.clone(),
             player_uuid,
             definition_id,
             amount,
@@ -161,22 +169,25 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
 
 pub struct InventoryServiceImpl {
     database_service: Arc<dyn DatabaseService + Send + Sync>,
+    item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+    random_service: Arc<dyn RandomService + Send + Sync>,
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     inventory_caches: DashMap<(Uuid, Uuid), Arc<RwLock<Vec<InventoryItem>>>>,
-    try_aggregate_inventories_fn: Arc<dyn Fn(Vec<InventoryItem>, &mut Vec<InventoryItem>) -> Vec<InventoryItem> + Send + Sync>,
-    generate_inventory_item_for_player_fn: Arc<dyn Fn(Uuid, u64, u64) -> InventoryItem + Send + Sync>,
 }
 
 impl InventoryServiceImpl {
     pub fn new(
         database_service: Arc<dyn DatabaseService + Send + Sync>,
-        try_aggregate_inventories_fn: Arc<dyn Fn(Vec<InventoryItem>, &mut Vec<InventoryItem>) -> Vec<InventoryItem> + Send + Sync>,
-        generate_inventory_item_for_player_fn: Arc<dyn Fn(Uuid, u64, u64) -> InventoryItem + Send + Sync>,
+        item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+        random_service: Arc<dyn RandomService + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     ) -> Self {
         Self {
             database_service,
+            item_definitions_service,
+            random_service,
+            item_definition_lookup_service,
             inventory_caches: DashMap::new(),
-            try_aggregate_inventories_fn,
-            generate_inventory_item_for_player_fn,
         }
     }
 

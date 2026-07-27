@@ -1,6 +1,5 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::characters_service_impl::CharactersServiceImpl;
-use crate::inventory::inventory_item_utils::{generate_inventory_item_for_player_default, try_aggregate_inventories};
 use crate::inventory::inventory_service_impl::InventoryServiceImpl;
 use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::map::maps_service::MapsService;
@@ -27,9 +26,11 @@ static ITEM_DEFINITIONS_RESPONSE_DEFAULT: Lazy<ItemDefinitionsResponse> =
     Lazy::new(|| ItemDefinitionsResponse::decode(ITEM_DEFS_BYTES).unwrap());
 
 pub static POOL: OnceCell<Arc<Pool<Postgres>>> = OnceCell::new();
-pub static SYSTEMS: Lazy<Arc<Systems>> = Lazy::new(|| {
-    let pool = POOL.get().expect("Database POOL must be initialized before accessing SYSTEMS");
+
+pub fn create_arc_services() -> Arc<Services> {
+    let pool = POOL.get().expect("Database POOL must be initialized before accessing services");
     println!("Creating Systems...");
+    let item_definition_lookup_service = Arc::new(ItemDefinitionLookupServiceImpl::default());
     let seed: [u8; 32] = rand::random();
     let random_service = Arc::new(RandomServiceImpl::new(seed));
     let items_definitions_impl = Arc::new(ItemDefinitionsServiceImpl::new(
@@ -39,22 +40,24 @@ pub static SYSTEMS: Lazy<Arc<Systems>> = Lazy::new(|| {
     let characters_impl = Arc::new(CharactersServiceImpl::new(
         database_impl.clone(),
         items_definitions_impl.clone(),
+        item_definition_lookup_service.clone(),
         random_service.clone(),
     ));
     let inventory_service_impl = Arc::new(InventoryServiceImpl::new(
         database_impl.clone(),
-        Arc::new(try_aggregate_inventories),
-        Arc::new(generate_inventory_item_for_player_default),
+        items_definitions_impl.clone(),
+        random_service.clone(),
+        item_definition_lookup_service.clone(),
     ));
     let maps_update_service = Arc::new(MapsUpdateServiceImpl::new(
         characters_impl.clone(),
         items_definitions_impl.clone(),
+        item_definition_lookup_service.clone(),
         inventory_service_impl.clone(),
         random_service.clone(),
     ));
     let transaction_service = Arc::new(TransactionServiceImpl::default());
-    let item_definition_lookup_service = Arc::new(ItemDefinitionLookupServiceImpl::default());
-    let systems = Arc::new(Systems::new(
+    let systems = Arc::new(Services::new(
         database_impl,
         characters_impl,
         items_definitions_impl,
@@ -65,9 +68,9 @@ pub static SYSTEMS: Lazy<Arc<Systems>> = Lazy::new(|| {
         item_definition_lookup_service,
     ));
     systems
-});
+}
 
-pub struct Systems {
+pub struct Services {
     // Arc → allows sharing across threads.
     // RwLock → allows multiple concurrent readers or exclusive writers.
     // You must ensure your impl implements Send + Sync (or wrap it properly).
@@ -82,7 +85,7 @@ pub struct Systems {
     pub item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
 }
 
-impl Systems {
+impl Services {
     pub fn new(
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         characters_service: Arc<dyn CharactersService + Send + Sync>,
@@ -97,6 +100,7 @@ impl Systems {
             maps_service: Arc::new(MapsServiceImpl::new(
                 characters_service.clone(),
                 items_definitions_service.clone(),
+                item_definition_lookup_service.clone(),
                 inventory_service.clone(),
                 maps_update_service.clone(),
             )),

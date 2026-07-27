@@ -1,4 +1,7 @@
-use crate::systems::systems::SYSTEMS;
+use crate::handlers::handler_registry::HandlerRegistration;
+use crate::handlers::handler_registry::RequestHandler;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
 use proto_gen::{TransactionRequest, TransactionResponse};
@@ -6,15 +9,16 @@ use ::protobuf_itemdefinition::*;
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(TransactionRequest => TransactionHandler);
+request_handler!(TransactionRequest => TransactionHandler, Services);
 
 async fn handle(
-        _message_timestamp: u64,
-        req: TransactionRequest,
-        ctx: Arc<ConnectionContext>,
+    _message_timestamp: u64,
+    req: TransactionRequest,
+    ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
     ) -> Result<ProtoResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
-    if let Err(error_code) = get_transaction_definition(req.transaction_id).await {
+    if let Err(error_code) = get_transaction_definition(systems.item_definition_lookup_service.clone(), req.transaction_id).await {
         return Err(build_error_response(
             ItemsErrorCode::TransactionInvalid.into(),
                       "Transaction definition not found.",
@@ -25,7 +29,7 @@ async fn handle(
         Ok(x) => x,
         Err(e) => return Err(build_error_response(ErrorCode::UnknownError.into(), &format!("failed to parse inventory_source_uuid: {}", e))),
     };
-    let inventory_arc = match SYSTEMS.inventory_service.get_inventory(player_uuid, secondary_key_uuid).await {
+    let inventory_arc = match systems.inventory_service.get_inventory(player_uuid, secondary_key_uuid).await {
         Ok(inventory) => inventory,
         Err(e) => {
             eprintln!("error trying to get items from player {}", e);
@@ -34,10 +38,10 @@ async fn handle(
     };
     let mut inventory_rwlock = inventory_arc.write().await;
     // Process the transaction
-    let result = match SYSTEMS.transaction_service.process_inventory_transaction_id(
-        SYSTEMS.inventory_service.clone(),
-        SYSTEMS.database_service.clone(),
-        SYSTEMS.random_service.clone(),
+    let result = match systems.transaction_service.process_inventory_transaction_id(
+        systems.inventory_service.clone(),
+        systems.database_service.clone(),
+        systems.random_service.clone(),
         &mut inventory_rwlock,
         player_uuid,
         req.transaction_id,
@@ -63,9 +67,10 @@ async fn handle(
 }
 
 pub async fn get_transaction_definition(
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     transaction_id: u64,
 ) -> Result<Arc<TransactionComponent>, ItemsErrorCode> {
-    let transaction_component = match SYSTEMS.item_definition_lookup_service.transaction_component(&transaction_id) {
+    let transaction_component = match item_definition_lookup_service.transaction_component(&transaction_id) {
         None => return Err(ItemsErrorCode::InvalidItemDefinition),
         Some(transaction_component) => transaction_component,
     };

@@ -1,6 +1,8 @@
 use crate::db;
+use crate::handlers::handler_registry::HandlerRegistration;
+use crate::handlers::handler_registry::RequestHandler;
 use crate::inventory::inventory_item_utils;
-use crate::systems::systems::{Systems, SYSTEMS};
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::*;
 use sqlx::Row;
@@ -8,14 +10,15 @@ use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(RegisterRequest => RegisterHandler);
+request_handler!(RegisterRequest => RegisterHandler, Services);
 
 async fn handle(
-        _message_timestamp: u64,
-        req: RegisterRequest,
-        _ctx: Arc<ConnectionContext>,
+    _message_timestamp: u64,
+    req: RegisterRequest,
+    _ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
     ) -> Result<ProtoResponse, ProtoResponse> {
-    let db_pool = SYSTEMS.database_service.get_db_pool();
+    let db_pool = systems.database_service.get_db_pool();
     let device_uuid = match Uuid::parse_str(&req.device_id) {
         Ok(player_uuid) => player_uuid,
         Err(_) => {
@@ -70,7 +73,7 @@ async fn handle(
         )),
     };
 
-    if let Err(e) = add_default_inventory_to_player(player_uuid, SYSTEMS.clone()).await {
+    if let Err(e) = add_default_inventory_to_player(player_uuid, systems.clone()).await {
         return Err(build_error_response(
             ErrorCode::UnknownError as i32,
             &format!("Failed to add default inventory: {}", e),
@@ -92,14 +95,15 @@ struct TempInventoryItem {
 
 pub async fn add_default_inventory_to_player(
     player_uuid: Uuid,
-    systems: Arc<Systems>,
+    systems: Arc<Services>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     // Convert to InventoryItem protobuf messages using generate_inventory_item_for_player
     let mut inventory_items = Vec::new();
-    for (item_id, component) in SYSTEMS.item_definition_lookup_service.inventory_initial_value_component_all() {
+    for (item_id, component) in systems.item_definition_lookup_service.inventory_initial_value_component_all() {
         let generated_item = inventory_item_utils::generate_inventory_item_for_player(
             systems.items_definitions_service.clone(),
             systems.random_service.clone(),
+            systems.item_definition_lookup_service.clone(),
             player_uuid,
             *item_id,
             component.value as u64,

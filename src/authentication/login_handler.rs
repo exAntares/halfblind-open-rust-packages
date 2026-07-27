@@ -1,18 +1,21 @@
-use crate::systems::systems::SYSTEMS;
+use crate::handlers::handler_registry::HandlerRegistration;
+use crate::handlers::handler_registry::RequestHandler;
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::*;
 use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(LoginRequest => LoginHandler);
+request_handler!(LoginRequest => LoginHandler, Services);
 
 async fn handle(
-        _message_timestamp: u64,
-        req: LoginRequest,
-        ctx: Arc<ConnectionContext>,
+    _message_timestamp: u64,
+    req: LoginRequest,
+    ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
     ) -> Result<ProtoResponse, ProtoResponse> {
-    let db_pool = SYSTEMS.database_service.get_db_pool();
+    let db_pool = systems.database_service.get_db_pool();
     let player_uuid = match Uuid::parse_str(&req.player_uuid) {
         Ok(uuid) => uuid,
         Err(e) => {

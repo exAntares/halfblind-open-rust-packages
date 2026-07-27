@@ -10,6 +10,7 @@ use uuid::Uuid;
 pub trait MapsService: Send + Sync {
     async fn change_player_map(
         &self,
+        maps_service: Arc<dyn MapsService + Send + Sync>,
         ctx: Arc<ConnectionContext>,
         player_uuid: Uuid,
         character_uuid: Uuid,

@@ -1,6 +1,7 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::models::DatabaseCharacter;
 use crate::inventory::inventory_item_utils::filter_visible_inventory;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::map::game_map::GameMap;
 use crate::map::maps_service::MapsService;
 use crate::map::models::MapAction::SpawnMob;
@@ -8,7 +9,6 @@ use crate::map::models::MapEntities::{LootableItem, PlayerCharacter};
 use crate::map::models::{GameSnapshot, GameState, MapActionTimed, MapEntities, MapEntity};
 use crate::map_update::game_state_rewindable::GameStateRewindable;
 use crate::map_update::maps_update_service::MapsUpdateService;
-use crate::systems::systems::SYSTEMS;
 use futures_util::SinkExt;
 use halfblind_inventory_service::InventoryService;
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
@@ -23,13 +23,18 @@ use tokio::time;
 use uuid::Uuid;
 
 impl MapsUpdateService for MapsUpdateServiceImpl {
-    fn start_update_loop(&self, map: Arc<GameMap>) -> JoinHandle<()> {
+    fn start_update_loop(
+        &self,
+        maps_service: Arc<dyn MapsService + Send + Sync>,
+        map: Arc<GameMap>
+    ) -> JoinHandle<()> {
         Self::start_update_loop(
             self.character_service.clone(),
             self.item_definitions_service.clone(),
+            self.item_definition_lookup_service.clone(),
             self.inventory_service.clone(),
             self.random_service.clone(),
-            SYSTEMS.maps_service.clone(),
+            maps_service.clone(),
             map,
         )
     }
@@ -47,6 +52,7 @@ impl MapsUpdateService for MapsUpdateServiceImpl {
 pub struct MapsUpdateServiceImpl {
     character_service: Arc<dyn CharactersService + Send + Sync>,
     item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
 }
@@ -55,12 +61,14 @@ impl MapsUpdateServiceImpl {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
         item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
     ) -> Self {
         Self {
             character_service,
             item_definitions_service,
+            item_definition_lookup_service,
             inventory_service,
             random_service,
         }
@@ -69,6 +77,7 @@ impl MapsUpdateServiceImpl {
     fn start_update_loop(
         character_service: Arc<dyn CharactersService + Send + Sync>,
         item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         maps_service: Arc<dyn MapsService + Send + Sync>,
@@ -84,6 +93,7 @@ impl MapsUpdateServiceImpl {
             let mut state = GameStateRewindable::new(
                 character_service.clone(),
                 item_definitions_service.clone(),
+                item_definition_lookup_service.clone(),
                 random_service.clone(),
                 map.clone(),
                 GameState {
@@ -155,6 +165,7 @@ impl MapsUpdateServiceImpl {
                     }
                     _ = mobs_tick.tick() => {
                         Self::spawn_mobs_tick(
+                            item_definition_lookup_service.clone(),
                             &state,
                             &map,
                             max_enemies,
@@ -178,9 +189,17 @@ impl MapsUpdateServiceImpl {
                             state.state_snapshots.pop_front();
                         }
 
-                        Self::merge_rewindable_inventory_into_real_inventory(&current_state, inventory_service.clone(), character_service.clone()).await;
+                        Self::merge_rewindable_inventory_into_real_inventory(
+                            &current_state,
+                            inventory_service.clone(),
+                            item_definition_lookup_service.clone(),
+                            character_service.clone()).await;
                         state.set_current_state(current_state.clone());
-                        let map_update_response = Self::game_state_to_update_response(map.map_id, &current_state, inventory_service.clone()).await;
+                        let map_update_response = Self::game_state_to_update_response(
+                            inventory_service.clone(),
+                            item_definition_lookup_service.clone(),
+                            map.map_id,
+                            &current_state).await;
                         // Collect all broadcast connections first to avoid holding the lock during iteration
                         let broadcast_connections: Vec<_> = map.broadcast.iter().map(|entry| entry.value().clone()).collect();
                         for ctx in broadcast_connections {
@@ -198,6 +217,7 @@ impl MapsUpdateServiceImpl {
     }
 
     async fn spawn_mobs_tick(
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         state: &GameStateRewindable,
         map: &GameMap,
         max_enemies: u32,
@@ -216,7 +236,7 @@ impl MapsUpdateServiceImpl {
         let spawn_points_data: Vec<_> = map_component.spawn_points
             .iter()
             .filter_map(|spawn_point| {
-                SYSTEMS.item_definition_lookup_service.mob_component(&spawn_point.enemy_definition_id)
+                item_definition_lookup_service.mob_component(&spawn_point.enemy_definition_id)
                     .map(|mob_comp| (spawn_point.enemy_definition_id, spawn_point.position, mob_comp.clone()))
             }).collect();
         let spawn_points_count = spawn_points_data.len();
@@ -268,6 +288,7 @@ impl MapsUpdateServiceImpl {
     async fn merge_rewindable_inventory_into_real_inventory(
         current_state: &GameState,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         characters_service: Arc<dyn CharactersService + Send + Sync>,
     ) {
         let mut unclaimed_drops: Vec<MapEntities> = Vec::new();
@@ -318,7 +339,7 @@ impl MapsUpdateServiceImpl {
                     .await {
                     Ok(character_inventory_lock) => {
                         let character_inventory = character_inventory_lock.read().await;
-                        *visible_inventory = filter_visible_inventory(character_inventory.as_slice())
+                        *visible_inventory = filter_visible_inventory(item_definition_lookup_service.clone(), character_inventory.as_slice())
                             .into_iter()
                             .cloned()
                             .collect();
@@ -396,9 +417,10 @@ impl MapsUpdateServiceImpl {
     }
 
     pub async fn game_state_to_update_response(
+        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         map_definition_id: u64,
         game_state: &GameState,
-        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     ) -> MapUpdateResponse {
         let mut map_state = MapState {
             map_definition_id,
@@ -430,7 +452,7 @@ impl MapsUpdateServiceImpl {
                             continue;
                         }
                     };
-                    let character_definition = match SYSTEMS.item_definition_lookup_service.character_definition_component(&(character_instance.character_db.character_definition_id as u64)) {
+                    let character_definition = match item_definition_lookup_service.character_definition_component(&(character_instance.character_db.character_definition_id as u64)) {
                         None => {
                             eprintln!("Failed to get character definition: {}", character_instance.character_db.character_definition_id);
                             continue;

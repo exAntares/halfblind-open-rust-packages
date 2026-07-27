@@ -9,12 +9,12 @@ mod map;
 mod map_update;
 mod nav_mesh;
 mod quests;
-mod systems;
+mod services;
 mod transactions;
 mod behaviour_trees;
 
-use crate::handlers::HANDLER_REGISTRY_BY_ANY_TYPE;
-use crate::systems::systems::{Systems, POOL, SYSTEMS};
+use crate::handlers::handler_registry::HANDLER_REGISTRY_BY_ANY_TYPE;
+use crate::services::services::{create_arc_services, Services, POOL};
 use axum::extract::ws::{WebSocket, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use axum::routing::get;
@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("Database connecting...");
     let pool = PgPool::connect(get_database_url().as_str()).await?;
     POOL.set(Arc::new(pool)).unwrap();
-    let systems = SYSTEMS.clone();
+    let systems = create_arc_services();
     println!("Create TcpListener...");
     let app = Router::new()
         .route("/ws", get(ws_handler))
@@ -61,12 +61,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    Extension(systems): Extension<Arc<Systems>>,
+    Extension(systems): Extension<Arc<Services>>,
 ) -> impl IntoResponse {
     ws.on_upgrade(|socket| handle_socket(socket, systems))
 }
 
-async fn handle_socket(socket: WebSocket, systems: Arc<Systems>) {
+async fn handle_socket(socket: WebSocket, systems: Arc<Services>) {
     let (ws_writer, mut ws_reader) = socket.split();
 
     let ctx = Arc::new(ConnectionContext {
@@ -80,7 +80,7 @@ async fn handle_socket(socket: WebSocket, systems: Arc<Systems>) {
                 match ProtoRequest::decode(&*data) {
                     Ok(request) => {
                         let message_id = request.message_id;
-                        let mut response = handle_request(request, ctx.clone())
+                        let mut response = handle_request(request, ctx.clone(), systems.clone())
                             .await
                             .unwrap_or_else(|e| e);
                         response.message_id = message_id;
@@ -119,6 +119,7 @@ async fn handle_socket(socket: WebSocket, systems: Arc<Systems>) {
 async fn handle_request(
     request: ProtoRequest,
     ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
 ) -> Result<ProtoResponse, ProtoResponse> {
     if let Some(any_payload) = request.any_payload {
         let type_url = any_payload.type_url.as_str();
@@ -129,6 +130,7 @@ async fn handle_request(
                     request.message_timestamp,
                     &any_payload.value,
                     ctx,
+                    systems.clone(),
                 )
                 .await;
         }

@@ -4,11 +4,11 @@ use crate::behaviour_trees::utils::move_to_positions;
 use crate::characters::characters_service::CharactersService;
 use crate::combat::combat_utils::{get_skill_damage, CharacterDamageModifier};
 use crate::inventory::inventory_item_utils;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::map::game_map::GameMap;
 use crate::map::models::MapAction::MoveTo;
 use crate::map::models::MapEntities::{MobCharacter, PlayerCharacter, Skill};
 use crate::map::models::{DamageEntity, GameSnapshot, GameState, MapAction, MapActionTimed, MapEntities, MapEntity, StatusInstance, TargetPositions};
-use crate::systems::systems::SYSTEMS;
 use dashmap::{DashMap, DashSet};
 use glam::Vec2;
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
@@ -27,6 +27,7 @@ pub struct GameStateRewindable {
 
     character_service: Arc<dyn CharactersService + Send + Sync>,
     item_definition_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     random_service: Arc<dyn RandomService + Send + Sync>,
 
     max_lag_ms: u64,
@@ -38,6 +39,7 @@ impl GameStateRewindable {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
         item_definition_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         game_map: Arc<GameMap>,
         current_state: GameState,
@@ -52,6 +54,7 @@ impl GameStateRewindable {
         Self {
             character_service,
             item_definition_service,
+            item_definition_lookup_service,
             game_map,
             random_service,
             max_lag_ms: 500,
@@ -117,7 +120,7 @@ impl GameStateRewindable {
                             // No update for dead players
                             return;
                         }
-                        let character_definition_component = match SYSTEMS.item_definition_lookup_service.character_definition_component(&(character.character_db.character_definition_id as u64))
+                        let character_definition_component = match self.item_definition_lookup_service.character_definition_component(&(character.character_db.character_definition_id as u64))
                         {
                             None => return,
                             Some(character_definition_component) => character_definition_component,
@@ -142,7 +145,7 @@ impl GameStateRewindable {
                         ..
                     } => {
                         let mob_id = mob_definition_id.clone();
-                        if let Some(behaviour_tree_comp) = SYSTEMS.item_definition_lookup_service.behaviour_tree_component(&mob_id) {
+                        if let Some(behaviour_tree_comp) = self.item_definition_lookup_service.behaviour_tree_component(&mob_id) {
                             let mut blackboard = BehaviourTreeMapContext {
                                 entity_uuid: entity_uuid.clone(),
                                 entity: &mut entity.entity_data,
@@ -160,7 +163,7 @@ impl GameStateRewindable {
                                     }
                                     Some(x) => x
                                 };
-                                bt.tick(&mut nodes_states, &mut blackboard);
+                                bt.tick(self.item_definition_lookup_service.clone(), &mut nodes_states, &mut blackboard);
                             }
                         }
                     }
@@ -279,14 +282,14 @@ impl GameStateRewindable {
                             match skill_component.on_hit {
                                 None => {}
                                 Some(x) => {
-                                    if let Some(status) = SYSTEMS.item_definition_lookup_service.status_on_hit_component(&x.id) {
+                                    if let Some(status) = self.item_definition_lookup_service.status_on_hit_component(&x.id) {
                                         entities_affected_status.lock().unwrap().push((target, x.id, status))
                                     }
                                     let mut damage_type_opt = None;
-                                    if let Some(_) = SYSTEMS.item_definition_lookup_service.damage_on_hit_component(&x.id) {
+                                    if let Some(_) = self.item_definition_lookup_service.damage_on_hit_component(&x.id) {
                                         damage_type_opt = Some(DamageType::Damage);
                                     }
-                                    if let Some(_) = SYSTEMS.item_definition_lookup_service.heal_on_hit_component(&x.id) {
+                                    if let Some(_) = self.item_definition_lookup_service.heal_on_hit_component(&x.id) {
                                         damage_type_opt = Some(DamageType::Heal);
                                     }
                                     match damage_type_opt {
@@ -477,7 +480,7 @@ impl GameStateRewindable {
                 position,
                 ..
             } => {
-                let max_hp = SYSTEMS.item_definition_lookup_service.character_definition_component(&(character_instance.character_db.character_definition_id as u64))
+                let max_hp = self.item_definition_lookup_service.character_definition_component(&(character_instance.character_db.character_definition_id as u64))
                     .unwrap()
                     .base_hp;
                 match damage_type {
@@ -536,7 +539,7 @@ impl GameStateRewindable {
                     1.0, // TODO: use luck here?
                 ) {
                     let selected_item = &loot_table.droppable_items[idx];
-                    if SYSTEMS.item_definition_lookup_service.can_roll_attributes_component(&selected_item.id_ref.unwrap().id).is_some() {
+                    if self.item_definition_lookup_service.can_roll_attributes_component(&selected_item.id_ref.unwrap().id).is_some() {
                         // For the moment, we drop item definitions, we will roll the attributes on pick up
                         // with the character that picks up the item
                         entities_to_add.lock().unwrap().push(MapEntities::LootableItem {
@@ -545,7 +548,7 @@ impl GameStateRewindable {
                             position: new_position,
                             amount: 1,
                         });
-                    } else if SYSTEMS.item_definition_lookup_service.is_stackable_component(&selected_item.id_ref.unwrap().id,).is_some() {
+                    } else if self.item_definition_lookup_service.is_stackable_component(&selected_item.id_ref.unwrap().id,).is_some() {
                         let amount = self.random_service.random_range_u32(selected_item.min_value, selected_item.max_value) as u64;
                         if amount <= 0 {
                             continue;
@@ -787,7 +790,7 @@ impl GameStateRewindable {
                     }
                     let mut damage_heal_per_tick = 0.0;
                     let mut is_critical_hit = false;
-                    match SYSTEMS.item_definition_lookup_service.damage_on_hit_component(&skill_definition_id) {
+                    match self.item_definition_lookup_service.damage_on_hit_component(&skill_definition_id) {
                         None => {}
                         Some(comp) => {
                             (damage_heal_per_tick, is_critical_hit) = get_skill_damage(
@@ -799,7 +802,7 @@ impl GameStateRewindable {
                             );
                         }
                     };
-                    match SYSTEMS.item_definition_lookup_service.heal_on_hit_component(&skill_definition_id) {
+                    match self.item_definition_lookup_service.heal_on_hit_component(&skill_definition_id) {
                         None => {}
                         Some(comp) => {
                             (damage_heal_per_tick, is_critical_hit) = get_skill_damage(
@@ -907,6 +910,7 @@ impl GameStateRewindable {
                                         // Only the owner can pick up the item
                                         owner_uuid == *character_uuid
                                         && inventory_item_utils::could_collect_item(
+                                            self.item_definition_lookup_service.clone(),
                                             definition_id,
                                             current_character_inventory_readonly,
                                         )
@@ -939,6 +943,7 @@ impl GameStateRewindable {
                         let new_item = inventory_item_utils::generate_inventory_item_for_player(
                             self.item_definition_service.clone(),
                             self.random_service.clone(),
+                            self.item_definition_lookup_service.clone(),
                             player_uuid,
                             definition_id,
                             amount,
@@ -946,7 +951,7 @@ impl GameStateRewindable {
                         );
 
                         // If the item is stackable and we had it before, sum the values
-                        if let Some(_stackable) = SYSTEMS.item_definition_lookup_service.is_stackable_component(&definition_id) {
+                        if let Some(_stackable) = self.item_definition_lookup_service.is_stackable_component(&definition_id) {
                             if let Some(existing) = rewindable_character_inventory
                                 .iter_mut()
                                 .find(|x| x.item_definition_id == definition_id)
@@ -959,6 +964,7 @@ impl GameStateRewindable {
                         } else {
                             // The item is not stackable or we didn't have it before, check for space
                             if inventory_item_utils::could_collect_item(
+                                self.item_definition_lookup_service.clone(),
                                 definition_id,
                                 &rewindable_character_inventory,
                             ) {
@@ -1004,8 +1010,8 @@ impl GameStateRewindable {
                     let assigned_skill_points = character_instance.character_db.strength
                         + character_instance.character_db.agility
                         + character_instance.character_db.intelligence;
-                    let result = SYSTEMS.item_definition_lookup_service.ability_points_per_level_singleton();
-                    let level_item_definition_id = SYSTEMS.item_definition_lookup_service.is_character_level_component_all()
+                    let result = self.item_definition_lookup_service.ability_points_per_level_singleton();
+                    let level_item_definition_id = self.item_definition_lookup_service.is_character_level_component_all()
                         .iter().last().unwrap().0;
                     let level_item = match visible_inventory.iter().find(|x| x.item_definition_id == *level_item_definition_id) {
                         None => {

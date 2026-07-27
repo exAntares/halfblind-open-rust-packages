@@ -1,12 +1,13 @@
 use crate::behaviour_trees::behaviour_tree_map_context::BehaviourTreeMapContext;
 use crate::behaviour_trees::behaviour_tree_status::BTStatus;
 use crate::behaviour_trees::utils::move_to_positions;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::map::models::{MapEntities, TargetPositions};
-use crate::systems::systems::SYSTEMS;
 use dashmap::DashMap;
 use glam::Vec2;
 use proto_gen::{BtRepeatMode, Position};
 use std::collections::HashSet;
+use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -53,6 +54,7 @@ pub enum BehaviourTreeNodeState {
 
 impl BehaviorTreeNode {
     pub fn tick(&self,
+                item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
                 node_state: &mut DashMap<Uuid, BehaviourTreeNodeState>,
                 ctx: &mut BehaviourTreeMapContext,
     ) -> BTStatus {
@@ -72,7 +74,7 @@ impl BehaviorTreeNode {
                     node_state.insert(*uuid, BehaviourTreeNodeState::Sequence(0));
                     return BTStatus::Success;
                 }
-                let status = children[index].tick(node_state, ctx);
+                let status = children[index].tick(item_definition_lookup_service.clone(), node_state, ctx);
                 match status {
                     BTStatus::Success => {
                         node_state.insert(*uuid, BehaviourTreeNodeState::Sequence(index + 1));
@@ -89,7 +91,7 @@ impl BehaviorTreeNode {
                 ..
             } => {
                 for child in children {
-                    let status = child.tick(node_state, ctx);
+                    let status = child.tick(item_definition_lookup_service.clone(), node_state, ctx);
                     match status {
                         BTStatus::Success => { return BTStatus::Success; }
                         BTStatus::Failure => {}
@@ -117,7 +119,7 @@ impl BehaviorTreeNode {
                         if repeat_count > 1 {
                             return BTStatus::Success;
                         }
-                        let status = children[0].tick(node_state, ctx);
+                        let status = children[0].tick(item_definition_lookup_service.clone(), node_state, ctx);
                         match status {
                             BTStatus::Running => {
                                 BTStatus::Running
@@ -129,14 +131,14 @@ impl BehaviorTreeNode {
                         }
                     }
                     BtRepeatMode::Forever => {
-                        children[0].tick(node_state, ctx);
+                        children[0].tick(item_definition_lookup_service.clone(), node_state, ctx);
                         BTStatus::Running
                     }
                     BtRepeatMode::XTimes => {
                         if repeat_count >= *count_times {
                            return BTStatus::Success;
                         }
-                        let status = children[0].tick(node_state, ctx);
+                        let status = children[0].tick(item_definition_lookup_service.clone(), node_state, ctx);
                         match status {
                             BTStatus::Success => {
                                 node_state.insert(*uuid, BehaviourTreeNodeState::Repeat(repeat_count + 1));
@@ -238,7 +240,7 @@ impl BehaviorTreeNode {
                     }
                     _ => return BTStatus::Failure,
                 };
-                let skill_component = match SYSTEMS.item_definition_lookup_service.skill_component(&skill_definition_id) {
+                let skill_component = match item_definition_lookup_service.skill_component(&skill_definition_id) {
                     None => {
                         return BTStatus::Failure;
                     }

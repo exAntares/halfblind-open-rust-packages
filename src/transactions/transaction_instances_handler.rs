@@ -1,19 +1,22 @@
-use crate::systems::systems::SYSTEMS;
+use crate::handlers::handler_registry::HandlerRegistration;
+use crate::handlers::handler_registry::RequestHandler;
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
 use halfblind_transactions::TransactionRecord;
 use ::protobuf_itemdefinition::*;
 use std::sync::Arc;
 
-request_handler!(TransactionInstancesRequest => TransactionInstancesHandler);
+request_handler!(TransactionInstancesRequest => TransactionInstancesHandler, Services);
 
 async fn handle(
-        _message_timestamp: u64,
-        _: TransactionInstancesRequest,
-        ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, ProtoResponse> {
+    _message_timestamp: u64,
+    _: TransactionInstancesRequest,
+    ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
+) -> Result<ProtoResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
-    let db_pool = SYSTEMS.database_service.get_db_pool();
+    let db_pool = systems.database_service.get_db_pool();
     // Query pending transactions from the database
     let transactions = match sqlx::query_as::<_, TransactionRecord>(
         r#"

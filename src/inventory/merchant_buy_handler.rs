@@ -1,76 +1,70 @@
+use crate::handlers::handler_registry::HandlerRegistration;
+use crate::handlers::handler_registry::RequestHandler;
 use crate::handlers::utils;
-use crate::systems::systems::SYSTEMS;
-use async_trait::async_trait;
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
 use proto_gen::{MerchantBuyItemRequest, MerchantBuyItemResponse};
 use protobuf_itemdefinition::ItemsErrorCode;
 use std::sync::Arc;
 
-#[derive(Default)]
-pub struct MerchantBuyItemHandler;
+request_handler!(MerchantBuyItemRequest => MerchantBuyItemRequestHandler, Services);
 
-#[async_trait]
-impl RequestHandler for MerchantBuyItemHandler {
-    async fn handle(
-        &self,
-        _message_timestamp: u64,
-        payload: &[u8],
-        ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, ProtoResponse> {
-        // Decode request
-        let req = decode_or_error::<MerchantBuyItemRequest>(payload)?;
+async fn handle(
+    _message_timestamp: u64,
+    req: MerchantBuyItemRequest,
+    ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
+) -> Result<ProtoResponse, ProtoResponse> {
+    // Ensure player is authenticated
+    let (player_uuid, character_uuid) = match utils::validate_character_and_player_uuid(&ctx, systems.clone(), req.character_uuid).await {
+        Ok(x) => x,
+        Err(response) => return Ok(response),
+    };
 
-        // Ensure player is authenticated
-        let (player_uuid, character_uuid) = match utils::validate_character_and_player_uuid(&ctx, SYSTEMS.clone(), req.character_uuid).await {
-            Ok(x) => x,
-            Err(response) => return Ok(response),
-        };
-
-        match SYSTEMS.item_definition_lookup_service.merchant_available_items_component(&req.merchant_definition_id) {
-            None => {
+    match systems.item_definition_lookup_service.merchant_available_items_component(&req.merchant_definition_id) {
+        None => {
+            Ok(build_error_response(
+                ItemsErrorCode::InvalidItemDefinition.into(),
+                "Merchant does not exist",
+            ))
+        }
+        Some(merchant_component) => {
+            if merchant_component.available_transactions.iter().len() <= req.item_index as usize {
                 Ok(build_error_response(
-                    ItemsErrorCode::InvalidItemDefinition.into(),
-                    "Merchant does not exist",
+                    halfblind_protobuf_network::ErrorCode::InvalidRequest.into(),
+                    "Item index is out of bounds",
                 ))
-            }
-            Some(merchant_component) => {
-                if merchant_component.available_transactions.iter().len() <= req.item_index as usize {
-                    Ok(build_error_response(
-                        halfblind_protobuf_network::ErrorCode::InvalidRequest.into(),
-                        "Item index is out of bounds",
-                    ))
-                } else {
-                    let transaction = merchant_component.available_transactions[req.item_index as usize].clone();
-                    let inventory_arc = match SYSTEMS.inventory_service.get_inventory(player_uuid, character_uuid).await {
-                        Ok(inventory_lock) => inventory_lock,
-                        Err(e) => return Ok(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), "Inventory does not exist")),
-                    };
-                    let mut inventory_rw_lock = inventory_arc.write().await;
-                    let result = match SYSTEMS.transaction_service.process_inventory_transaction_id(
-                        SYSTEMS.inventory_service.clone(),
-                        SYSTEMS.database_service.clone(),
-                        SYSTEMS.random_service.clone(),
-                        &mut inventory_rw_lock,
-                        player_uuid,
-                        transaction.id,
-                    )
-                        .await
-                    {
-                        Ok(result) => result,
-                        Err(error_code) => {
-                            return Ok(build_error_response(
-                                error_code.into(),
-                                "Merchant buy failed.",
-                            ));
-                        }
-                    };
+            } else {
+                let transaction = merchant_component.available_transactions[req.item_index as usize].clone();
+                let inventory_arc = match systems.inventory_service.get_inventory(player_uuid, character_uuid).await {
+                    Ok(inventory_lock) => inventory_lock,
+                    Err(e) => return Ok(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), "Inventory does not exist")),
+                };
+                let mut inventory_rw_lock = inventory_arc.write().await;
+                let result = match systems.transaction_service.process_inventory_transaction_id(
+                    systems.inventory_service.clone(),
+                    systems.database_service.clone(),
+                    systems.random_service.clone(),
+                    &mut inventory_rw_lock,
+                    player_uuid,
+                    transaction.id,
+                )
+                    .await
+                {
+                    Ok(result) => result,
+                    Err(error_code) => {
+                        return Ok(build_error_response(
+                            error_code.into(),
+                            "Merchant buy failed.",
+                        ));
+                    }
+                };
 
-                    let response = MerchantBuyItemResponse {
-                        inventory: result.inventory,
-                    };
-                    encode_ok(&response)
-                }
+                let response = MerchantBuyItemResponse {
+                    inventory: result.inventory,
+                };
+                encode_ok(&response)
             }
         }
     }

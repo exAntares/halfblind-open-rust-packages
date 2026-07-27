@@ -1,4 +1,6 @@
-use crate::systems::systems::SYSTEMS;
+use crate::handlers::handler_registry::HandlerRegistration;
+use crate::handlers::handler_registry::RequestHandler;
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::*;
 use halfblind_transactions::resolve_expired_transaction;
@@ -6,12 +8,13 @@ use proto_gen::{TransactionResolveRequest, TransactionResolveResponse};
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(TransactionResolveRequest => TransactionResolveHandler);
+request_handler!(TransactionResolveRequest => TransactionResolveHandler, Services);
 
 async fn handle(
-        message_timestamp: u64,
-        req: TransactionResolveRequest,
-        ctx: Arc<ConnectionContext>,
+    message_timestamp: u64,
+    req: TransactionResolveRequest,
+    ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
     ) -> Result<ProtoResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
     let transaction_id = match Uuid::parse_str(&req.id) {
@@ -24,7 +27,7 @@ async fn handle(
         }
     };
 
-    let db_pool = SYSTEMS.database_service.get_db_pool();
+    let db_pool = systems.database_service.get_db_pool();
     let result = resolve_expired_transaction(
         &transaction_id,
         player_uuid,
@@ -37,7 +40,7 @@ async fn handle(
         }
         _ => {}
     };
-    let inventory = match SYSTEMS
+    let inventory = match systems
         .inventory_service
         .get_player_inventory(player_uuid)
         .await {

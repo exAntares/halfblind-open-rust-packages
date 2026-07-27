@@ -1,20 +1,23 @@
-use crate::systems::systems::SYSTEMS;
+use crate::handlers::handler_registry::HandlerRegistration;
+use crate::handlers::handler_registry::RequestHandler;
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
 use proto_gen::{CheatAddInventoryItemRequest, CheatAddInventoryItemResponse};
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(CheatAddInventoryItemRequest => CheatAddInventoryItemHandler);
+request_handler!(CheatAddInventoryItemRequest => CheatAddInventoryItemHandler, Services);
 
 async fn handle(
     _message_timestamp: u64,
     req: CheatAddInventoryItemRequest,
     _ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
 ) -> Result<ProtoResponse, ProtoResponse> {
     #[cfg(feature = "cheats")]
     {
-        let inventory_service = SYSTEMS.inventory_service.clone();
+        let inventory_service = systems.inventory_service.clone();
         let player_uuid = match Uuid::parse_str(&req.player_uuid) {
             Ok(x) => x,
             Err(_) => return Err(build_error_response(halfblind_protobuf_network::ErrorCode::AuthenticationFailed.into(), "Invalid player UUID")),

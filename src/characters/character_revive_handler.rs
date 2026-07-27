@@ -1,19 +1,18 @@
-use async_trait::async_trait;
+use crate::handlers::handler_registry::HandlerRegistration;
+use crate::handlers::handler_registry::RequestHandler;
+use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::*;
+use proto_gen::CharacterReviveRequest;
 use std::sync::Arc;
 
-#[derive(Default)]
-pub struct CharacterReviveHandler;
+request_handler!(CharacterReviveRequest => CharacterReviveRequestHandler, Services);
 
-#[async_trait]
-impl RequestHandler for CharacterReviveHandler {
-    async fn handle(
-        &self,
-        _message_timestamp: u64,
-        _payload: &[u8],
-        _ctx: Arc<ConnectionContext>,
-    ) -> Result<ProtoResponse, ProtoResponse> {
-        Err(build_error_response(ErrorCode::NotImplemented as i32, "CharacterReviveHandler NotImplemented"))
-    }
+async fn handle(
+    _message_timestamp: u64,
+    _: CharacterReviveRequest,
+    _ctx: Arc<ConnectionContext>,
+    systems: Arc<Services>,
+) -> Result<ProtoResponse, ProtoResponse> {
+    Err(build_error_response(ErrorCode::NotImplemented as i32, "CharacterReviveHandler NotImplemented"))
 }

@@ -2,7 +2,7 @@ use crate::characters::characters_service::CharactersService;
 use crate::characters::models::DatabaseCharacter;
 use crate::inventory::inventory_item_utils;
 use crate::inventory::inventory_item_utils::try_aggregate_inventories;
-use crate::systems::systems::SYSTEMS;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_database_service::DatabaseService;
@@ -17,8 +17,10 @@ use uuid::Uuid;
 pub struct CharactersServiceImpl {
     database_service: Arc<dyn DatabaseService + Send + Sync>,
     item_definition_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     random_service: Arc<dyn RandomService + Send + Sync>,
     characters_cache: DashMap<Uuid, Vec<Arc<RwLock<DatabaseCharacter>>>>,
+
 }
 
 #[async_trait]
@@ -196,7 +198,7 @@ impl CharactersService for CharactersServiceImpl {
             }
             Some(index) => {index}
         };
-        let level_definition_id = SYSTEMS.item_definition_lookup_service.is_character_level_component_all().iter().last().unwrap().0;
+        let level_definition_id = self.item_definition_lookup_service.is_character_level_component_all().iter().last().unwrap().0;
         let level_inventory_item_idx = match inventory.iter().position(|x| x.item_definition_id == *level_definition_id) {
             None => {
                 return Err("Character does not have a level item".into());
@@ -233,12 +235,14 @@ impl CharactersService for CharactersServiceImpl {
         let new_item = inventory_item_utils::generate_inventory_item_for_player(
             self.item_definition_service.clone(),
             self.random_service.clone(),
+            self.item_definition_lookup_service.clone(),
             player_uuid,
             xp_item_definition_id,
             xp,
             0.0, // No luck needed for XP
         );
         try_aggregate_inventories(
+            self.item_definition_lookup_service.clone(),
             vec![new_item],
             inventory,
         );
@@ -250,18 +254,20 @@ impl CharactersServiceImpl {
     pub fn new(
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         item_definition_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         random_service: Arc<dyn RandomService + Send + Sync>,
     ) -> Self {
         Self {
             database_service,
             item_definition_service,
+            item_definition_lookup_service,
             random_service,
             characters_cache: DashMap::new(),
         }
     }
 
     pub fn get_xp_item_definition_id(&self) -> u64 {
-        SYSTEMS.item_definition_lookup_service.is_character_xp_component_all()
+        self.item_definition_lookup_service.is_character_xp_component_all()
             .iter()
             .last()
             .unwrap()
@@ -270,7 +276,7 @@ impl CharactersServiceImpl {
     }
 
     pub fn get_xp_required(&self) -> Arc<LevelRequiredExperienceComponent> {
-        SYSTEMS.item_definition_lookup_service.level_required_experience_component_all()
+        self.item_definition_lookup_service.level_required_experience_component_all()
             .iter()
             .last()
             .unwrap()

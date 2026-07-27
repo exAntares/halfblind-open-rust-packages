@@ -1,5 +1,4 @@
-use crate::item_definitions::INVENTORY_HIDDEN_ITEM_COMPONENT_LOOKUP;
-use crate::systems::systems::SYSTEMS;
+use crate::item_definitions::{ItemDefinitionLookupServiceImpl, INVENTORY_HIDDEN_ITEM_COMPONENT_LOOKUP};
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_random::RandomService;
 use once_cell::sync::Lazy;
@@ -11,14 +10,18 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 pub fn generate_inventory_item_for_player_default(
+    item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+    random_service: Arc<dyn RandomService + Send + Sync>,
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     player_uuid: Uuid,
     definition_id: u64,
     amount: u64,
 ) -> InventoryItem {
     let total_luck_percentage = 0.0;
     generate_inventory_item_for_player(
-        SYSTEMS.items_definitions_service.clone(),
-        SYSTEMS.random_service.clone(),
+        item_definitions_service.clone(),
+        random_service.clone(),
+        item_definition_lookup_service.clone(),
         player_uuid,
         definition_id,
         amount,
@@ -31,6 +34,7 @@ pub fn generate_inventory_item_for_player_default(
 pub fn generate_inventory_item_for_player(
     item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     player_uuid: Uuid,
     definition_id: u64,
     amount: u64,
@@ -51,7 +55,7 @@ pub fn generate_inventory_item_for_player(
 
     let _item_definition = _item_definition.unwrap();
 
-    if SYSTEMS.item_definition_lookup_service.is_stackable_component(&definition_id).is_some() {
+    if item_definition_lookup_service.is_stackable_component(&definition_id).is_some() {
         return InventoryItem {
             item_instance_id: Uuid::new_v4().to_string(),
             item_definition_id: definition_id,
@@ -108,12 +112,13 @@ pub fn generate_inventory_item_for_player(
 /// // uncollectable contains items that couldn't be added due to space/constraints
 /// ```
 pub fn try_aggregate_inventories(
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     source: Vec<InventoryItem>,
     target: &mut Vec<InventoryItem>,
 ) -> Vec<InventoryItem> {
     let mut unable_to_collect_items = Vec::new();
     for to_add in source {
-        if let Some(_stackable) = SYSTEMS.item_definition_lookup_service.is_stackable_component(&to_add.item_definition_id) {
+        if let Some(_stackable) = item_definition_lookup_service.is_stackable_component(&to_add.item_definition_id) {
             if let Some(existing) = target
                 .iter_mut()
                 .find(|x| x.item_definition_id == to_add.item_definition_id)
@@ -126,6 +131,7 @@ pub fn try_aggregate_inventories(
         } else {
             // The item is not stackable, or we didn't have it before, check for space
             if could_collect_item(
+                item_definition_lookup_service.clone(),
                 to_add.item_definition_id,
                 target,
             ) {
@@ -161,10 +167,11 @@ where
 /// Filters the inventory items to return only the visible items.
 /// Which are the Equipped inventory items plus character level
 pub fn filter_visible_inventory(
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     items: &[InventoryItem]
 ) -> Vec<&InventoryItem> {
     let mut result = filter_equipped_or_unequipped_items(items, true);
-    let level_item_definition_id = SYSTEMS.item_definition_lookup_service.is_character_level_component_all()
+    let level_item_definition_id = item_definition_lookup_service.is_character_level_component_all()
         .iter().last().unwrap().0;
     match items.iter().find(|x| x.item_definition_id == *level_item_definition_id) {
         None => {}
@@ -228,20 +235,21 @@ pub fn sum_inventory_item_attributes_by_definition(
 }
 
 pub fn could_collect_item(
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     item_definition_id: u64,
     character_inventory_items: &[InventoryItem],
 ) -> bool {
     // Check if the _item_to_collect_definition has a component of type InventoryHiddenItemComponent
-    if SYSTEMS.item_definition_lookup_service.inventory_hidden_item_component(&item_definition_id)
+    if item_definition_lookup_service.inventory_hidden_item_component(&item_definition_id)
         .is_some()
     {
         // Hidden items can always be collected (they don't count toward inventory limits)
         return true;
     }
 
-    let max_visible_inventory_capacity = SYSTEMS.item_definition_lookup_service.maximum_visible_inventory_capacity_singleton().capacity;
+    let max_visible_inventory_capacity = item_definition_lookup_service.maximum_visible_inventory_capacity_singleton().capacity;
     // Check if the item is stackable, if so, check if we already have it in the inventory
-    if SYSTEMS.item_definition_lookup_service.is_stackable_component(&item_definition_id).is_some() {
+    if item_definition_lookup_service.is_stackable_component(&item_definition_id).is_some() {
         // Check if we have it in the inventory already
         for item in character_inventory_items {
             if item.item_definition_id == item_definition_id {

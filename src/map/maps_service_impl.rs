@@ -1,10 +1,10 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::models::Character;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::map::game_map::GameMap;
 use crate::map::maps_service::MapsService;
 use crate::map::models::{MapAction, MapActionTimed, MapEntities};
 use crate::map_update::maps_update_service::MapsUpdateService;
-use crate::systems::systems::SYSTEMS;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_inventory_service::InventoryService;
@@ -19,6 +19,7 @@ use uuid::Uuid;
 impl MapsService for MapsServiceImpl {
     async fn change_player_map(
         &self,
+        maps_service: Arc<dyn MapsService + Send + Sync>,
         ctx: Arc<ConnectionContext>,
         player_uuid: Uuid,
         character_uuid: Uuid,
@@ -50,7 +51,7 @@ impl MapsService for MapsServiceImpl {
             }
         }// Release lock
 
-        let character_definition = match SYSTEMS.item_definition_lookup_service.character_definition_component(&(character_db.character_definition_id as u64))
+        let character_definition = match self.item_definition_lookup_service.character_definition_component(&(character_db.character_definition_id as u64))
         {
             Some(x) => x,
             None => {
@@ -85,7 +86,7 @@ impl MapsService for MapsServiceImpl {
         if game_map.characters_by_player.iter().count() == 1 {
             println!("First Character joined map so we should start update loop");
             self.maps_update_service_impl
-                .start_update_loop(game_map.clone());
+                .start_update_loop(maps_service.clone(), game_map.clone());
         } else {
             println!("Map has {} players so we should not start update loop", game_map.characters_by_player.iter().count());
         }
@@ -175,6 +176,7 @@ pub struct MapsServiceImpl {
     character_service: Arc<dyn CharactersService + Send + Sync>,
     inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     maps_update_service_impl: Arc<dyn MapsUpdateService + Send + Sync>,
 }
 
@@ -182,6 +184,7 @@ impl MapsServiceImpl {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
         item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
+        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         maps_update_service_impl: Arc<dyn MapsUpdateService + Send + Sync>,
     ) -> Self {
@@ -191,6 +194,7 @@ impl MapsServiceImpl {
             map_id_by_player: DashMap::new(),
             character_service,
             inventory_service,
+            item_definition_lookup_service,
             item_definitions_service,
             maps_update_service_impl,
         }
