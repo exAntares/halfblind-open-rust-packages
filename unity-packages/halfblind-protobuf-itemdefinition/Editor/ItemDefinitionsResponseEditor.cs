@@ -16,6 +16,8 @@ namespace BalancingEditor {
         [SerializeField] [Sirenix.OdinInspector.FilePath]
         private string _path = string.Empty;
         
+        [SerializeField] private ExportDebugStyle _exportDebugStyle = ExportDebugStyle.SingleFileExport;
+        
         [Button]
         public void ExportItemDefinitions() {
             var assetPath = AssetDatabase.GetAssetPath(this);
@@ -64,9 +66,19 @@ namespace BalancingEditor {
             response.Definitions.Add(itemDefinitions);
             var byteArray = response.ToByteArray();
             File.WriteAllBytes(_path, byteArray);
-            var jsonPath = _path.Replace(Path.GetExtension(_path), ".json");
-            var jsonValues = JsonConvert.SerializeObject(sortedDictionary, Formatting.Indented);
-            File.WriteAllText(jsonPath, jsonValues);
+            switch (_exportDebugStyle) {
+                case ExportDebugStyle.SingleFileExport:
+                    var jsonPath = _path.Replace(Path.GetExtension(_path), ".json");
+                    File.WriteAllText(jsonPath, JsonConvert.SerializeObject(sortedDictionary, Formatting.Indented));
+                    break;
+                case ExportDebugStyle.MultiFileExport:
+                    var exportDirectory = Path.GetDirectoryName(_path);
+                    foreach (var x1 in sortedDictionary) {
+                        var itemDefinitionPath = Path.Combine(exportDirectory, $"Item_{x1.Key}.json");
+                        File.WriteAllText(itemDefinitionPath, JsonConvert.SerializeObject(x1.Value, Formatting.Indented));
+                    }
+                    break;
+            }
             AssetDatabase.Refresh();
             Debug.Log($"Successfully exported all item definitions to {_path}", this);
         }
@@ -123,6 +135,11 @@ namespace BalancingEditor {
                         break;
                 }
             }
+        }
+        public enum ExportDebugStyle {
+            DoNotExportDebugFiles,
+            SingleFileExport,
+            MultiFileExport,
         }
     }
 }
