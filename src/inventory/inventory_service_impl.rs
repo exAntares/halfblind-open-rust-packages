@@ -49,14 +49,10 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
         &self,
         player_uuid: Uuid,
         character_uuid: Uuid,
+        inventory: &Vec<InventoryItem>,
         db_connection: &mut PgConnection,
     ) -> Result<(), sqlx::Error> {
-        let inventory_items = match self.inventory_caches.get(&(player_uuid, character_uuid)) {
-            None => return Ok(()),
-            Some(inventory) => inventory.read().await.clone(),
-        };
-
-        for item in inventory_items {
+        for item in inventory {
             // Helper function which gives Some(key, value) if the index exists, None for both otherwise.
             let get_attr = |idx: usize| {
                 item.attributes

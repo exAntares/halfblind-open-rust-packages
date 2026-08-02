@@ -28,6 +28,7 @@ pub trait InventoryService<T> {
         &self,
         player_uuid: Uuid,
         secondary_uuid: Uuid,
+        inventory: &Vec<T>,
         db_connection: &mut PgConnection, // The caller must do COMMIT
     ) -> Result<(), sqlx::Error>;
 }

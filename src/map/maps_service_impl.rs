@@ -211,15 +211,17 @@ impl MapsServiceImpl {
                             eprintln!("Error saving character to db {}", e);
                         }
                     }
-
-                    match self
-                        .inventory_service
-                        .save_inventory_to_db(player_uuid, *character_uuid, &mut *db_connection)
-                        .await
-                    {
-                        Ok(_) => {}
-                        Err(e) => {
-                            eprintln!("Error saving character inventory to db {}", e);
+                    if let Ok(character_inventory_arc) = self.inventory_service.get_inventory(player_uuid, player_uuid).await {
+                        let character_inventory_read = character_inventory_arc.read().await;
+                        match self
+                            .inventory_service
+                            .save_inventory_to_db(player_uuid, *character_uuid, &character_inventory_read, &mut *db_connection)
+                            .await
+                        {
+                            Ok(_) => {}
+                            Err(e) => {
+                                eprintln!("Error saving character inventory to db {}", e);
+                            }
                         }
                     }
                 }

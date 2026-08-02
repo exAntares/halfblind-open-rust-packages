@@ -95,7 +95,7 @@ async fn handle(
     let mut db_connection = systems.database_service.get_db_pool().begin().await.map_err(sqlx_error_to_proto_error)?;
     systems
         .inventory_service
-        .save_inventory_to_db(player_uuid, player_uuid, &mut db_connection)
+        .save_inventory_to_db(player_uuid, player_uuid, &player_inventory_rw_lock.clone(), &mut db_connection)
         .await.map_err(sqlx_error_to_proto_error)?;
     db_connection.commit().await.map_err(sqlx_error_to_proto_error)?;
     let response = RegisterResponse {

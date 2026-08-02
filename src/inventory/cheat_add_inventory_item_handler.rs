@@ -35,7 +35,7 @@ async fn handle(
             &req.item_def,
             &mut character_inventory_rw);
         let mut db_connection = systems.database_service.get_db_pool().begin().await.map_err(sqlx_error_to_proto_error)?;
-        inventory_service.save_inventory_to_db(player_uuid, character_uuid, &mut db_connection).await.map_err(sqlx_error_to_proto_error)?;
+        inventory_service.save_inventory_to_db(player_uuid, character_uuid, &character_inventory_rw, &mut db_connection).await.map_err(sqlx_error_to_proto_error)?;
         db_connection.commit().await.map_err(sqlx_error_to_proto_error)?;
         let response = CheatAddInventoryItemResponse {
             player_uuid: req.player_uuid,
