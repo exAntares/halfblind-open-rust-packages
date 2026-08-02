@@ -1,3 +1,5 @@
+use halfblind_network::build_error_response;
+use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
@@ -18,4 +20,8 @@ pub async fn try_create_player(
         .await?;
     let player_uuid = row.get::<Uuid, _>("uuid");
     Ok(player_uuid)
+}
+
+pub fn sqlx_error_to_proto_error(e: sqlx::Error) -> ProtoResponse {
+    build_error_response(ErrorCode::UnknownError.into(), &format!("Sqlx failure: {}", e))
 }

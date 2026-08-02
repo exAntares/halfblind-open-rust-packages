@@ -1,3 +1,4 @@
+use crate::db::db::sqlx_error_to_proto_error;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::item_definitions::ItemDefinitionLookupServiceImpl;
@@ -37,11 +38,14 @@ async fn handle(
         }
     };
     let mut inventory_rwlock = inventory_arc.write().await;
+    let mut db_transaction = systems.database_service.clone()
+        .get_db_pool()
+        .begin()
+        .await.map_err(sqlx_error_to_proto_error)?;
     // Process the transaction
     let result = match systems.transaction_service.process_inventory_transaction_id(
-        systems.inventory_service.clone(),
-        systems.database_service.clone(),
         systems.random_service.clone(),
+        &mut db_transaction,
         &mut inventory_rwlock,
         player_uuid,
         req.transaction_id,
@@ -56,13 +60,12 @@ async fn handle(
             ));
         }
     };
-
+    db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;
     let response = TransactionResponse {
-        transaction_instance_id: result.transaction_instance_id,
+        transaction_instance_id: result.delayed_items,
         inventory: result.inventory,
         rewarded: result.rewarded,
     };
-
     encode_ok(&response)
 }
 

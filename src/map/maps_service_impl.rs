@@ -1,5 +1,6 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::models::Character;
+use crate::db::db::sqlx_error_to_proto_error;
 use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::map::game_map::GameMap;
 use crate::map::maps_service::MapsService;
@@ -7,6 +8,7 @@ use crate::map::models::{MapAction, MapActionTimed, MapEntities};
 use crate::map_update::maps_update_service::MapsUpdateService;
 use async_trait::async_trait;
 use dashmap::DashMap;
+use halfblind_database_service::DatabaseService;
 use halfblind_inventory_service::InventoryService;
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_network::*;
@@ -106,7 +108,10 @@ impl MapsService for MapsServiceImpl {
         })
     }
 
-    async fn remove_player_from_all_maps(&self, player_uuid: &Uuid) {
+    async fn remove_player_from_all_maps(
+        &self,
+        player_uuid: &Uuid,
+    ) {
         // First, get the map_id and remove the player from player_maps in one operation
         let map_id = match self.map_id_by_player.remove(player_uuid) {
             None => return, // There is no map with that player
@@ -114,51 +119,24 @@ impl MapsService for MapsServiceImpl {
         };
         let game_map = match self.all_maps_by_id.get(&map_id) {
             None => return, // There is no map with that ID!!
-            Some(x) => x,
+            Some(x) => x.clone(),
         };
 
         // Stop broadcasting this player the map updates.
         game_map.broadcast.remove(player_uuid);
 
-        let (player_uuid, characters_uuid) = match game_map.characters_by_player.remove(player_uuid)
-        {
+        let (player_uuid, characters_uuid) = match game_map.characters_by_player.remove(player_uuid) {
             None => return, // Could not find the player in the map data
             Some(x) => x,
         };
-        let game_state = game_map.last_known_game_state.read().await;
         for character_uuid in &characters_uuid {
             game_map.player_by_character.remove(&character_uuid);
-            let character_instance = match game_state.entities.get(&character_uuid) {
-                None => continue,
-                Some(entity) => match &entity.entity_data {
-                    MapEntities::PlayerCharacter {
-                        character_instance, ..
-                    } => character_instance.clone(),
-                    _ => continue,
-                },
-            };
-            match self
-                .character_service
-                .save_character_instance_to_db(&character_instance.character_db)
-                .await
-            {
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("Error saving character to db {}", e);
-                }
-            }
-
-            match self
-                .inventory_service
-                .save_character_inventory(player_uuid, *character_uuid)
-                .await
-            {
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("Error saving character inventory to db {}", e);
-                }
-            }
         }
+        self.save_disconnected_character_into_db(
+            &characters_uuid,
+            game_map.clone(),
+            player_uuid,
+        ).await;
 
         game_map.push_action(MapActionTimed {
             timestamp: get_now(),
@@ -178,6 +156,7 @@ pub struct MapsServiceImpl {
     item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
     item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     maps_update_service_impl: Arc<dyn MapsUpdateService + Send + Sync>,
+    database_service: Arc<dyn DatabaseService + Send + Sync>,
 }
 
 impl MapsServiceImpl {
@@ -187,6 +166,7 @@ impl MapsServiceImpl {
         item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         maps_update_service_impl: Arc<dyn MapsUpdateService + Send + Sync>,
+        database_service: Arc<dyn DatabaseService + Send + Sync>,
     ) -> Self {
         let all_maps_by_id = DashMap::new();
         Self {
@@ -197,6 +177,59 @@ impl MapsServiceImpl {
             item_definition_lookup_service,
             item_definitions_service,
             maps_update_service_impl,
+            database_service,
+        }
+    }
+
+    async fn save_disconnected_character_into_db<'a>(
+        &self,
+        characters_uuid: &Vec<Uuid>,
+        game_map: Arc<GameMap>,
+        player_uuid: Uuid,
+    ) {
+        let game_state = game_map.last_known_game_state.read().await;
+        match self.database_service.get_db_pool().begin().await {
+            Ok(mut db_connection) => {
+                for character_uuid in characters_uuid {
+                    game_map.player_by_character.remove(&character_uuid);
+                    let character_instance = match game_state.entities.get(&character_uuid) {
+                        None => continue,
+                        Some(entity) => match &entity.entity_data {
+                            MapEntities::PlayerCharacter {
+                                character_instance, ..
+                            } => character_instance.clone(),
+                            _ => continue,
+                        },
+                    };
+                    match self
+                        .character_service
+                        .save_character_instance_to_db(&character_instance.character_db, &mut *db_connection)
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(e) => {
+                            eprintln!("Error saving character to db {}", e);
+                        }
+                    }
+
+                    match self
+                        .inventory_service
+                        .save_inventory_to_db(player_uuid, *character_uuid, &mut *db_connection)
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(e) => {
+                            eprintln!("Error saving character inventory to db {}", e);
+                        }
+                    }
+                }
+                if let Err(e) = db_connection.commit().await.map_err(sqlx_error_to_proto_error){
+                    eprintln!("Failed to save characters into db after disconnection");
+                }
+            }
+            Err(e) => {
+                eprintln!("Failure getting the db connection to save characters after disconnection");
+            }
         }
     }
 

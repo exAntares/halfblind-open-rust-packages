@@ -19,42 +19,19 @@ pub fn generate_inventory_item_for_player_default(
 ) -> InventoryItem {
     let total_luck_percentage = 0.0;
     generate_inventory_item_for_player(
-        item_definitions_service.clone(),
-        random_service.clone(),
         item_definition_lookup_service.clone(),
-        player_uuid,
         definition_id,
-        amount,
-        total_luck_percentage)
+        amount)
 }
 
 // Utility to construct an InventoryItem for a pickup action.
 // It generates inventory items using the luck accumulated by
 // the character.
 pub fn generate_inventory_item_for_player(
-    item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-    random_service: Arc<dyn RandomService + Send + Sync>,
     item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
-    player_uuid: Uuid,
     definition_id: u64,
     amount: u64,
-    total_luck_percentage: f32,
 ) -> InventoryItem {
-    let _item_definition =
-        item_definitions_service.get_item_definition_for_player(player_uuid, definition_id);
-    if _item_definition.is_none() {
-        // I honestly don't know what to do in this case :)
-        return InventoryItem {
-            item_instance_id: Uuid::new_v4().to_string(),
-            item_definition_id: definition_id,
-            amount,
-            is_equipped: false,
-            attributes: Vec::new(),
-        };
-    }
-
-    let _item_definition = _item_definition.unwrap();
-
     if item_definition_lookup_service.is_stackable_component(&definition_id).is_some() {
         return InventoryItem {
             item_instance_id: Uuid::new_v4().to_string(),
@@ -113,10 +90,10 @@ pub fn generate_inventory_item_for_player(
 /// ```
 pub fn try_aggregate_inventories(
     item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
-    source: Vec<InventoryItem>,
+    source: &Vec<InventoryItem>,
     target: &mut Vec<InventoryItem>,
 ) -> Vec<InventoryItem> {
-    let mut unable_to_collect_items = Vec::new();
+    let mut unable_to_collect_items: Vec<InventoryItem> = Vec::new();
     for to_add in source {
         if let Some(_stackable) = item_definition_lookup_service.is_stackable_component(&to_add.item_definition_id) {
             if let Some(existing) = target
@@ -126,7 +103,7 @@ pub fn try_aggregate_inventories(
                 existing.amount += to_add.amount;
             } else {
                 // Otherwise, just add the new item to the inventory
-                target.push(to_add);
+                target.push(to_add.clone());
             }
         } else {
             // The item is not stackable, or we didn't have it before, check for space
@@ -135,9 +112,9 @@ pub fn try_aggregate_inventories(
                 to_add.item_definition_id,
                 target,
             ) {
-                target.push(to_add);
+                target.push(to_add.clone());
             } else {
-                unable_to_collect_items.push(to_add);
+                unable_to_collect_items.push(to_add.clone());
             }
         }
     }

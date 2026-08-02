@@ -1,3 +1,4 @@
+use crate::db::db::sqlx_error_to_proto_error;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::handlers::utils;
@@ -44,22 +45,22 @@ async fn handle(
     if quest_status.amount != (QuestStatus::InProgress as u64) {
         return Ok(build_error_response(GameErrorCode::QuestIsNotAvailable.into(), "Quest is not in progress!!"));
     }
-
+    let mut db_transaction = systems.database_service.clone()
+        .get_db_pool()
+        .begin()
+        .await.map_err(sqlx_error_to_proto_error)?;
     // TODO: luis getting rewards could fail due not enough inventory space!! We should check it before and ignore the claim
     match systems.transaction_service.process_inventory_transaction_id(
-        systems.inventory_service.clone(),
-        systems.database_service.clone(),
         systems.random_service.clone(),
+        &mut db_transaction,
         &mut inventory_rw_lock,
         player_uuid,
         req.quest_definition_id,
     ).await {
         Ok(_) => {}
-        Err(e) => {
-            return Ok(build_error_response(e.into(), &"Failed transaction".to_string()))
-        }
+        Err(e) => return Err(build_error_response(e.into(), &"Failed transaction".to_string())),
     };
-
+    db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;
     let response = ClaimQuestResponse {};
     encode_ok(&response)
 }

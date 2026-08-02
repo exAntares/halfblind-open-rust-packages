@@ -1,13 +1,12 @@
-use crate::inventory::inventory_item_utils::{generate_inventory_item_for_player_default, try_aggregate_inventories};
 use crate::inventory::models::PlayerItem;
 use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_database_service::DatabaseService;
 use halfblind_inventory_service::InventoryService;
-use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_random::RandomService;
 use proto_gen::{InventoryItem, InventoryItemAttribute};
+use sqlx::PgConnection;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -34,7 +33,7 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
         player_uuid: Uuid,
         owner_uuid: Uuid,
         item_definition_id: u64,
-    ) -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<i64, sqlx::Error> {
         let inventory_lock = self.get_inventory(player_uuid, owner_uuid).await?;
         let inventory = inventory_lock.read().await;
         let mut sum = 0i64;
@@ -46,14 +45,12 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
         Ok(sum)
     }
 
-    async fn save_character_inventory(
+    async fn save_inventory_to_db(
         &self,
         player_uuid: Uuid,
         character_uuid: Uuid,
+        db_connection: &mut PgConnection,
     ) -> Result<(), sqlx::Error> {
-        let db_pool = self.database_service.get_db_pool();
-
-        let mut transaction = db_pool.begin().await?;
         let inventory_items = match self.inventory_caches.get(&(player_uuid, character_uuid)) {
             None => return Ok(()),
             Some(inventory) => inventory.read().await.clone(),
@@ -77,7 +74,7 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
             if item.amount == 0 {
                 sqlx::query("DELETE FROM player_inventory WHERE item_instance_id = $1")
                     .bind(item_instance_uuid)
-                    .execute(&mut *transaction)
+                    .execute(&mut *db_connection)
                     .await?;
             } else{
                 sqlx::query(
@@ -113,63 +110,16 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
                     .bind(get_attr(3).map(|(e, _)| e))
                     .bind(get_attr(3).map(|(_, v)| v))
                     .bind(item.is_equipped)
-                    .execute(&mut *transaction)
+                    .execute(&mut *db_connection)
                     .await?;
             }
         }
-        transaction.commit().await?;
         Ok(())
-    }
-
-    async fn aggregate_inventories(
-        &self,
-        player_uuid: Uuid,
-        secondary_uuid: Uuid,
-        inventory: Vec<InventoryItem>,
-    ) -> Result<Vec<InventoryItem>, sqlx::Error> {
-        let inventory_guard = self
-            .get_inventory(player_uuid, secondary_uuid)
-            .await?;
-        let mut target_inventory = inventory_guard.write().await; // Then access the RwLock
-        let unable_to_collect = self.try_aggregate_inventories(
-            inventory,
-            &mut target_inventory,
-        );
-        Ok(unable_to_collect)
-    }
-
-    fn try_aggregate_inventories(
-        &self,
-        source: Vec<InventoryItem>,
-        target: &mut Vec<InventoryItem>,
-    ) -> Vec<InventoryItem> {
-        try_aggregate_inventories(
-            self.item_definition_lookup_service.clone(),
-            source,
-            target,
-        )
-    }
-
-    fn generate_inventory_item_for_player(
-        &self,
-        player_uuid: Uuid,
-        definition_id: u64,
-        amount: u64,
-    ) -> InventoryItem {
-        generate_inventory_item_for_player_default(
-            self.item_definitions_service.clone(),
-            self.random_service.clone(),
-            self.item_definition_lookup_service.clone(),
-            player_uuid,
-            definition_id,
-            amount,
-        )
     }
 }
 
 pub struct InventoryServiceImpl {
     database_service: Arc<dyn DatabaseService + Send + Sync>,
-    item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
     item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     inventory_caches: DashMap<(Uuid, Uuid), Arc<RwLock<Vec<InventoryItem>>>>,
@@ -178,13 +128,11 @@ pub struct InventoryServiceImpl {
 impl InventoryServiceImpl {
     pub fn new(
         database_service: Arc<dyn DatabaseService + Send + Sync>,
-        item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     ) -> Self {
         Self {
             database_service,
-            item_definitions_service,
             random_service,
             item_definition_lookup_service,
             inventory_caches: DashMap::new(),

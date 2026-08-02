@@ -31,32 +31,28 @@ pub fn create_arc_services() -> Arc<Services> {
     let pool = POOL.get().expect("Database POOL must be initialized before accessing services");
     println!("Creating Systems...");
     let item_definition_lookup_service = Arc::new(ItemDefinitionLookupServiceImpl::default());
-    let seed: [u8; 32] = rand::random();
-    let random_service = Arc::new(RandomServiceImpl::new(seed));
+    let transaction_service = Arc::new(TransactionServiceImpl::default());
+    let random_service = Arc::new(RandomServiceImpl::new(rand::random()));
     let items_definitions_impl = Arc::new(ItemDefinitionsServiceImpl::new(
         &ITEM_DEFINITIONS_RESPONSE_DEFAULT
     ));
     let database_impl = Arc::new(DatabaseServiceImpl::new(pool.clone()));
     let characters_impl = Arc::new(CharactersServiceImpl::new(
         database_impl.clone(),
-        items_definitions_impl.clone(),
         item_definition_lookup_service.clone(),
         random_service.clone(),
     ));
     let inventory_service_impl = Arc::new(InventoryServiceImpl::new(
         database_impl.clone(),
-        items_definitions_impl.clone(),
         random_service.clone(),
         item_definition_lookup_service.clone(),
     ));
     let maps_update_service = Arc::new(MapsUpdateServiceImpl::new(
         characters_impl.clone(),
-        items_definitions_impl.clone(),
         item_definition_lookup_service.clone(),
         inventory_service_impl.clone(),
         random_service.clone(),
     ));
-    let transaction_service = Arc::new(TransactionServiceImpl::default());
     let systems = Arc::new(Services::new(
         database_impl,
         characters_impl,
@@ -103,6 +99,7 @@ impl Services {
                 item_definition_lookup_service.clone(),
                 inventory_service.clone(),
                 maps_update_service.clone(),
+                database_service.clone(),
             )),
             database_service,
             characters_service,

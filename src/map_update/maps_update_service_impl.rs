@@ -1,6 +1,5 @@
 use crate::characters::characters_service::CharactersService;
-use crate::characters::models::DatabaseCharacter;
-use crate::inventory::inventory_item_utils::filter_visible_inventory;
+use crate::inventory::inventory_item_utils::{filter_visible_inventory, try_aggregate_inventories};
 use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::map::game_map::GameMap;
 use crate::map::maps_service::MapsService;
@@ -11,7 +10,6 @@ use crate::map_update::game_state_rewindable::GameStateRewindable;
 use crate::map_update::maps_update_service::MapsUpdateService;
 use futures_util::SinkExt;
 use halfblind_inventory_service::InventoryService;
-use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_network::*;
 use halfblind_random::RandomService;
 use proto_gen::{entity_position, CharacterInstance, CharacterPrivateInstance, EntityPosition, InventoryItem, ItemInstance, MapState, MobInstance, SkillInstance, StatusInstance};
@@ -30,7 +28,6 @@ impl MapsUpdateService for MapsUpdateServiceImpl {
     ) -> JoinHandle<()> {
         Self::start_update_loop(
             self.character_service.clone(),
-            self.item_definitions_service.clone(),
             self.item_definition_lookup_service.clone(),
             self.inventory_service.clone(),
             self.random_service.clone(),
@@ -51,7 +48,6 @@ impl MapsUpdateService for MapsUpdateServiceImpl {
 
 pub struct MapsUpdateServiceImpl {
     character_service: Arc<dyn CharactersService + Send + Sync>,
-    item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
     item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
@@ -60,14 +56,12 @@ pub struct MapsUpdateServiceImpl {
 impl MapsUpdateServiceImpl {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
-        item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
         item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
     ) -> Self {
         Self {
             character_service,
-            item_definitions_service,
             item_definition_lookup_service,
             inventory_service,
             random_service,
@@ -76,7 +70,6 @@ impl MapsUpdateServiceImpl {
 
     fn start_update_loop(
         character_service: Arc<dyn CharactersService + Send + Sync>,
-        item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
         item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
@@ -92,7 +85,6 @@ impl MapsUpdateServiceImpl {
             let mut mobs_tick = time::interval(Duration::from_millis(5000));
             let mut state = GameStateRewindable::new(
                 character_service.clone(),
-                item_definitions_service.clone(),
                 item_definition_lookup_service.clone(),
                 random_service.clone(),
                 map.clone(),
@@ -257,31 +249,11 @@ impl MapsUpdateServiceImpl {
     }
 
     async fn try_level_up_character(
-        character_instance: &mut DatabaseCharacter,
-        inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         characters_service: Arc<dyn CharactersService + Send + Sync>,
+        character_inventory: &mut Vec<InventoryItem>,
     ) {
-        let character_inventory_lock = match inventory_service
-            .get_inventory(
-                character_instance.player_uuid,
-                character_instance.character_uuid,
-            )
-            .await
-        {
-            Ok(inventory) => inventory,
-            Err(e) => {
-                eprintln!("Failed to get character inventory: {}", e);
-                return;
-            }
-        };
-        let mut character_inventory = character_inventory_lock.write().await;
-        match characters_service
-            .try_level_up_character(&mut character_inventory)
-        {
-            Ok(_) => {}
-            Err(e) => {
+        if let Err(e) = characters_service.try_level_up_character(character_inventory) {
                 eprintln!("Failed to check level up: {}", e);
-            }
         };
     }
 
@@ -301,20 +273,22 @@ impl MapsUpdateServiceImpl {
                 ..
             } = &mut entity.entity_data
             {
-                let unable_to_claim_inventory = match inventory_service
-                    .aggregate_inventories(
-                        character_instance.character_db.player_uuid,
-                        character_instance.character_db.character_uuid,
-                        rewindable_character_inventory.clone(),
-                    )
-                    .await
-                {
-                    Ok(unable_to_claim_inventory) => unable_to_claim_inventory,
+                let character_inventory_arc = match inventory_service.get_inventory(
+                    character_instance.character_db.player_uuid,
+                    character_instance.character_db.character_uuid,
+                ).await {
+                    Ok(x) => x,
                     Err(e) => {
                         eprintln!("Failed to merge inventory: {}", e);
                         continue;
                     }
                 };
+                let mut character_inventory_rw_lock = character_inventory_arc.write().await;
+                let unable_to_claim_inventory = try_aggregate_inventories(
+                    item_definition_lookup_service.clone(),
+                    &rewindable_character_inventory.clone(),
+                    &mut character_inventory_rw_lock,
+                );
                 rewindable_character_inventory.clear();
                 for unclaimed_item in unable_to_claim_inventory {
                     unclaimed_drops.push(LootableItem {
@@ -326,26 +300,14 @@ impl MapsUpdateServiceImpl {
                 }
                 // If we merged the inventory, check if the character should level up
                 Self::try_level_up_character(
-                    &mut character_instance.character_db,
-                    inventory_service.clone(),
                     characters_service.clone(),
+                    &mut character_inventory_rw_lock,
                 )
                 .await;
-                // after level up we should update the visible inventory
-                match inventory_service
-                    .get_inventory(
-                    character_instance.character_db.player_uuid,
-                    character_instance.character_db.character_uuid)
-                    .await {
-                    Ok(character_inventory_lock) => {
-                        let character_inventory = character_inventory_lock.read().await;
-                        *visible_inventory = filter_visible_inventory(item_definition_lookup_service.clone(), character_inventory.as_slice())
-                            .into_iter()
-                            .cloned()
-                            .collect();
-                    }
-                    Err(_) => {}
-                }
+                *visible_inventory = filter_visible_inventory(item_definition_lookup_service.clone(), character_inventory_rw_lock.as_slice())
+                    .into_iter()
+                    .cloned()
+                    .collect();
             }
         }
         for drop in unclaimed_drops {

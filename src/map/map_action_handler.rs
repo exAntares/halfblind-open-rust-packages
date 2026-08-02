@@ -1,3 +1,4 @@
+use crate::db::db::sqlx_error_to_proto_error;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::inventory::inventory_item_utils::filter_visible_inventory;
@@ -175,10 +176,13 @@ async fn handle(
                 Err(e) => return Err(build_error_response(ErrorCode::UnknownError.into(), &format!("Failed to get character inventory {}", e))),
             };
             let mut inventory_rw_lock = inventory_lock.write().await;
+            let mut db_transaction = systems.database_service.clone()
+                .get_db_pool()
+                .begin()
+                .await.map_err(sqlx_error_to_proto_error)?;
             match systems.transaction_service.process_inventory_transaction_id(
-                systems.inventory_service.clone(),
-                systems.database_service.clone(),
                 systems.random_service.clone(),
+                &mut db_transaction,
                 &mut inventory_rw_lock,
                 player_uuid,
                 teleport.transaction_id,
@@ -208,10 +212,11 @@ async fn handle(
                 .await
             {
                 Ok(_) => {
+                    db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;
                     let response = MapActionResponse {};
                     encode_ok(&response)
                 }
-                Err(e) => Ok(build_error_response(
+                Err(e) => Err(build_error_response(
                     ErrorCode::UnknownError.into(),
                     format!("Failed to change player to a new map {}", e).as_str(),
                 )),
@@ -223,7 +228,7 @@ async fn handle(
                 1 => CharacterStat::Int,
                 2 => CharacterStat::Str,
                 _ => {
-                    return Ok(build_error_response(
+                    return Err(build_error_response(
                         GameErrorCode::InvalidCharacterStat.into(),
                         "Invalid stat type",
                     ));

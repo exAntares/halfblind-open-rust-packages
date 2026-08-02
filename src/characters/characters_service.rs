@@ -1,6 +1,7 @@
 use crate::characters::models::DatabaseCharacter;
 use async_trait::async_trait;
 use proto_gen::{CharacterDefinitionComponent, InventoryItem};
+use sqlx::PgConnection;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -36,6 +37,7 @@ pub trait CharactersService: Send + Sync {
     async fn save_character_instance_to_db(
         &self,
         character_instance: &DatabaseCharacter,
+        db_connection: &mut PgConnection, // The caller must do COMMIT
     ) -> Result<(), Box<dyn Error + Send + Sync>>;
 
     fn try_level_up_character(

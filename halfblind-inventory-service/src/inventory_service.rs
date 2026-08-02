@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use std::error::Error;
+use sqlx::PgConnection;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -14,7 +14,7 @@ pub trait InventoryService<T> {
     async fn get_inventory(
         &self,
         player_uuid: Uuid,
-        character_uuid: Uuid,
+        secondary_uuid: Uuid,
     ) -> Result<Arc<RwLock<Vec<T>>>, sqlx::Error>;
 
     async fn get_definition_value_summed(
@@ -22,34 +22,12 @@ pub trait InventoryService<T> {
         player_uuid: Uuid,
         owner_uuid: Uuid,
         item_definition_id: u64,
-    ) -> Result<i64, Box<dyn Error + Send + Sync>>;
+    ) -> Result<i64, sqlx::Error>;
 
-    async fn save_character_inventory(
-        &self,
-        player_uuid: Uuid,
-        character_uuid: Uuid,
-    ) -> Result<(), sqlx::Error>;
-
-    ///
-    /// Returns items that were unable to be aggregated due the inventory limits.
-    ///
-    async fn aggregate_inventories(
+    async fn save_inventory_to_db(
         &self,
         player_uuid: Uuid,
         secondary_uuid: Uuid,
-        inventory: Vec<T>,
-    ) -> Result<Vec<T>, sqlx::Error>;
-
-    fn try_aggregate_inventories(
-        &self,
-        source: Vec<T>,
-        target: &mut Vec<T>,
-    ) -> Vec<T>;
-
-    fn generate_inventory_item_for_player(
-        &self,
-        player_uuid: Uuid,
-        definition_id: u64,
-        amount: u64,
-    ) -> T;
+        db_connection: &mut PgConnection, // The caller must do COMMIT
+    ) -> Result<(), sqlx::Error>;
 }

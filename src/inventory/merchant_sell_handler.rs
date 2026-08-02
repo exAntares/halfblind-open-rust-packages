@@ -1,3 +1,4 @@
+use crate::db::db::sqlx_error_to_proto_error;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::handlers::utils;
@@ -120,10 +121,13 @@ async fn handle(
         value_max: 0,
         duration: 0,
     }];
+    let mut db_transaction = systems.database_service.clone()
+        .get_db_pool()
+        .begin()
+        .await.map_err(sqlx_error_to_proto_error)?;
     let transaction_result = match systems.transaction_service.process_inventory_transaction(
-        systems.inventory_service.clone(),
-        systems.database_service.clone(),
         systems.random_service.clone(),
+        &mut db_transaction,
         &mut inventory_rw_lock,
         player_uuid,
         None,
@@ -137,6 +141,7 @@ async fn handle(
             return Ok(build_error_response(e.into(), &"Failed sell transaction".to_string()))
         }
     };
+    db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;
     let result = MerchantSellItemResponse { inventory: transaction_result.inventory };
     encode_ok(&result)
 }

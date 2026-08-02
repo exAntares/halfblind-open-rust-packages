@@ -7,7 +7,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct TransactionResult<T> {
-    pub transaction_instance_id: Vec<TransactionInstance>,
+    pub delayed_items: Vec<TransactionInstance>,
     pub inventory: Vec<T>,
     pub rewarded: Vec<T>,
 }

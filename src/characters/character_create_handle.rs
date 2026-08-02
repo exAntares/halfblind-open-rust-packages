@@ -1,6 +1,8 @@
+use crate::db::db::sqlx_error_to_proto_error;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::inventory::inventory_item_utils;
+use crate::inventory::inventory_item_utils::try_aggregate_inventories;
 use crate::item_definitions::CHARACTER_DEFINITION_COMPONENT_LOOKUP;
 use crate::services::services::Services;
 use halfblind_network::*;
@@ -27,7 +29,7 @@ async fn handle(
         .iter().last()
     {
         None => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 ItemsErrorCode::InvalidItemDefinition as i32,
                 &"Character Slot id not found".to_string(),
             ));
@@ -42,7 +44,7 @@ async fn handle(
     {
         Ok(slots_count) => slots_count,
         Err(_) => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 GameErrorCode::NotEnoughCharacterSlots as i32,
                 "slot count not found".into(),
             ));
@@ -55,7 +57,7 @@ async fn handle(
         .ok()
         .unwrap();
     if all_characters.iter().count() >= slots_count as usize {
-        return Ok(build_error_response(
+        return Err(build_error_response(
             GameErrorCode::NotEnoughCharacterSlots as i32,
             "Not enough character slots".into(),
         ));
@@ -101,23 +103,26 @@ async fn handle(
             attributes: vec![],
         }).collect::<Vec<_>>();
     let character_db = record.read().await;
-    let new_inventory = match add_default_inventory_to_character(
+    let character_inventory_arc = systems.inventory_service
+        .get_inventory(player_uuid, character_db.character_uuid)
+        .await
+        .map_err(sqlx_error_to_proto_error)?;
+    let mut character_inventory_rw_lock = character_inventory_arc.write().await;
+    let new_inventory = add_default_inventory_to_character(
         player_uuid,
-        character_db.character_uuid,
+        &mut character_inventory_rw_lock,
         initial_inventory,
         systems.clone(),
-    )
-        .await
-    {
-        Ok(e) => e,
-        Err(e) => {
-            return Ok(build_error_response(
-                halfblind_protobuf_network::ErrorCode::UnknownError as i32,
-                &format!("Failure creating initial character inventory: {}", e),
-            ));
-        }
-    };
-
+    ).await.map_err(|e| build_error_response(
+        halfblind_protobuf_network::ErrorCode::UnknownError as i32,
+        &format!("Failure creating initial character inventory: {}", e),
+    ))?;
+    let mut db_connection = systems.database_service.get_db_pool().begin().await.map_err(sqlx_error_to_proto_error)?;
+    systems
+        .inventory_service
+        .save_inventory_to_db(player_uuid, character_db.character_uuid, &mut db_connection)
+        .await.map_err(sqlx_error_to_proto_error)?;
+    db_connection.commit().await.map_err(sqlx_error_to_proto_error)?;
     let response = CharacterCreateResponse {
         character: Some(CharacterInstance {
             player_owner_uuid: player_uuid.to_string(),
@@ -142,51 +147,34 @@ async fn handle(
 
 pub async fn add_default_inventory_to_character(
     player_uuid: Uuid,
-    character_uuid: Uuid,
+    inventory: &mut Vec<InventoryItem>,
     initial_inventory_from_definition: Vec<InventoryItem>,
     systems: Arc<Services>,
 ) -> Result<Vec<InventoryItem>, Box<dyn Error + Send + Sync>> {
     // Convert to InventoryItem protobuf messages using generate_inventory_item_for_player
-    let mut inventory_items = Vec::new();
+    let mut inventory_items_to_add = Vec::new();
     for (item_id, component) in systems.item_definition_lookup_service.inventory_initial_value_character_component_all() {
         let generated_item = inventory_item_utils::generate_inventory_item_for_player(
-            systems.items_definitions_service.clone(),
-            systems.random_service.clone(),
             systems.item_definition_lookup_service.clone(),
-            player_uuid,
             *item_id,
-            component.value as u64,
-            0.0, // Empty luck for new players
+            component.value as u64,  // Empty luck for new players
         );
 
-        inventory_items.push(generated_item);
+        inventory_items_to_add.push(generated_item);
     }
 
     for x in initial_inventory_from_definition {
         let generated_item = inventory_item_utils::generate_inventory_item_for_player(
-            systems.items_definitions_service.clone(),
-            systems.random_service.clone(),
             systems.item_definition_lookup_service.clone(),
-            player_uuid,
             x.item_definition_id,
-            x.amount,
-            0.0, // Empty luck for new players
+            x.amount,  // Empty luck for new players
         );
 
-        inventory_items.push(generated_item);
+        inventory_items_to_add.push(generated_item);
     }
-
     // Save using inventory_service if we have any items
-    if !inventory_items.is_empty() {
-        systems
-            .inventory_service
-            .aggregate_inventories(player_uuid, character_uuid, inventory_items.clone())
-            .await?;
-        systems
-            .inventory_service
-            .save_character_inventory(player_uuid, character_uuid)
-            .await?;
+    if !inventory_items_to_add.is_empty() {
+        try_aggregate_inventories(systems.item_definition_lookup_service.clone(), &inventory_items_to_add, inventory);
     }
-
-    Ok(inventory_items)
+    Ok(inventory_items_to_add)
 }

@@ -1,10 +1,14 @@
 use crate::db;
+use crate::db::db::sqlx_error_to_proto_error;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::inventory::inventory_item_utils;
+use crate::inventory::inventory_item_utils::try_aggregate_inventories;
+use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::*;
+use proto_gen::InventoryItem;
 use sqlx::Row;
 use std::error::Error;
 use std::sync::Arc;
@@ -73,13 +77,27 @@ async fn handle(
         )),
     };
 
-    if let Err(e) = add_default_inventory_to_player(player_uuid, systems.clone()).await {
-        return Err(build_error_response(
-            ErrorCode::UnknownError as i32,
-            &format!("Failed to add default inventory: {}", e),
-        ));
-    }
+    let player_inventory_arc = systems.inventory_service
+        .get_inventory(player_uuid, player_uuid)
+        .await
+        .map_err(sqlx_error_to_proto_error)?;
+    let mut player_inventory_rw_lock = player_inventory_arc.write().await;
+    let mut player_inventory_clone = player_inventory_rw_lock.clone();
 
+    add_default_inventory_to_player(
+        systems.item_definition_lookup_service.clone(),
+        player_uuid,
+        systems.clone(),
+        &mut player_inventory_clone,
+    ).await.map_err(|e|build_error_response(ErrorCode::UnknownError as i32, &format!("Failed to add default inventory: {}", e)))?;
+
+    *player_inventory_rw_lock = player_inventory_clone;
+    let mut db_connection = systems.database_service.get_db_pool().begin().await.map_err(sqlx_error_to_proto_error)?;
+    systems
+        .inventory_service
+        .save_inventory_to_db(player_uuid, player_uuid, &mut db_connection)
+        .await.map_err(sqlx_error_to_proto_error)?;
+    db_connection.commit().await.map_err(sqlx_error_to_proto_error)?;
     let response = RegisterResponse {
         player_uuid: player_uuid.to_string(),
         token: password.to_string(),
@@ -94,36 +112,26 @@ struct TempInventoryItem {
 }
 
 pub async fn add_default_inventory_to_player(
+    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     player_uuid: Uuid,
     systems: Arc<Services>,
+    player_inventory: &mut Vec<InventoryItem>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     // Convert to InventoryItem protobuf messages using generate_inventory_item_for_player
-    let mut inventory_items = Vec::new();
+    let mut inventory_items_to_add = Vec::new();
     for (item_id, component) in systems.item_definition_lookup_service.inventory_initial_value_component_all() {
         let generated_item = inventory_item_utils::generate_inventory_item_for_player(
-            systems.items_definitions_service.clone(),
-            systems.random_service.clone(),
             systems.item_definition_lookup_service.clone(),
-            player_uuid,
             *item_id,
-            component.value as u64,
-            0.0, // Players don't have luck
+            component.value as u64,  // Players don't have luck
         );
 
-        inventory_items.push(generated_item);
+        inventory_items_to_add.push(generated_item);
     }
 
     // Save using inventory_service if we have any items
-    if !inventory_items.is_empty() {
-        systems
-            .inventory_service
-            .aggregate_inventories(player_uuid, player_uuid, inventory_items)
-            .await?;
-        systems
-            .inventory_service
-            .save_character_inventory(player_uuid, player_uuid)
-            .await?;
+    if !inventory_items_to_add.is_empty() {
+        try_aggregate_inventories(item_definition_lookup_service, &inventory_items_to_add, player_inventory);
     }
-
     Ok(())
 }

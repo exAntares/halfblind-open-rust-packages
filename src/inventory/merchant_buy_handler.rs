@@ -1,3 +1,4 @@
+use crate::db::db::sqlx_error_to_proto_error;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::handlers::utils;
@@ -42,10 +43,13 @@ async fn handle(
                     Err(e) => return Ok(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), "Inventory does not exist")),
                 };
                 let mut inventory_rw_lock = inventory_arc.write().await;
+                let mut db_transaction = systems.database_service.clone()
+                    .get_db_pool()
+                    .begin()
+                    .await.map_err(sqlx_error_to_proto_error)?;
                 let result = match systems.transaction_service.process_inventory_transaction_id(
-                    systems.inventory_service.clone(),
-                    systems.database_service.clone(),
                     systems.random_service.clone(),
+                    &mut db_transaction,
                     &mut inventory_rw_lock,
                     player_uuid,
                     transaction.id,
@@ -60,7 +64,7 @@ async fn handle(
                         ));
                     }
                 };
-
+                db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;
                 let response = MerchantBuyItemResponse {
                     inventory: result.inventory,
                 };

@@ -11,7 +11,6 @@ use crate::map::models::MapEntities::{MobCharacter, PlayerCharacter, Skill};
 use crate::map::models::{DamageEntity, GameSnapshot, GameState, MapAction, MapActionTimed, MapEntities, MapEntity, StatusInstance, TargetPositions};
 use dashmap::{DashMap, DashSet};
 use glam::Vec2;
-use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_network::*;
 use halfblind_random::RandomService;
 use proto_gen::{CharacterStat, Position, SkillAoETargetType};
@@ -26,7 +25,6 @@ pub struct GameStateRewindable {
     pub state_snapshots: VecDeque<GameSnapshot>, // You should also consider using a VecDeque if you are frequently removing old states from the front
 
     character_service: Arc<dyn CharactersService + Send + Sync>,
-    item_definition_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
     item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     random_service: Arc<dyn RandomService + Send + Sync>,
 
@@ -38,7 +36,6 @@ pub struct GameStateRewindable {
 impl GameStateRewindable {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
-        item_definition_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
         item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         game_map: Arc<GameMap>,
@@ -53,7 +50,6 @@ impl GameStateRewindable {
         };
         Self {
             character_service,
-            item_definition_service,
             item_definition_lookup_service,
             game_map,
             random_service,
@@ -941,13 +937,9 @@ impl GameStateRewindable {
                     for (loot_uuid, definition_id, amount, loot_entity) in looted_items {
                         // Use utility to construct the InventoryItem
                         let new_item = inventory_item_utils::generate_inventory_item_for_player(
-                            self.item_definition_service.clone(),
-                            self.random_service.clone(),
                             self.item_definition_lookup_service.clone(),
-                            player_uuid,
                             definition_id,
-                            amount,
-                            0.0, // TODO: get luck from equipments
+                            amount,  // TODO: get luck from equipments
                         );
 
                         // If the item is stackable and we had it before, sum the values

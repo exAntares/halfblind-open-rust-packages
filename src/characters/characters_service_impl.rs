@@ -6,9 +6,9 @@ use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_database_service::DatabaseService;
-use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_random::RandomService;
 use proto_gen::{CharacterDefinitionComponent, InventoryItem, LevelRequiredExperienceComponent};
+use sqlx::PgConnection;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -16,7 +16,6 @@ use uuid::Uuid;
 
 pub struct CharactersServiceImpl {
     database_service: Arc<dyn DatabaseService + Send + Sync>,
-    item_definition_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
     item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
     random_service: Arc<dyn RandomService + Send + Sync>,
     characters_cache: DashMap<Uuid, Vec<Arc<RwLock<DatabaseCharacter>>>>,
@@ -157,10 +156,8 @@ impl CharactersService for CharactersServiceImpl {
     async fn save_character_instance_to_db(
         &self,
         character_instance: &DatabaseCharacter,
+        db_connection: &mut PgConnection, // The caller must do COMMIT
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        // Try to get the character instance from the in-memory hash set
-        // Get db pool
-        let db_pool = self.database_service.get_db_pool();
         // Update the DB state
         sqlx::query(
             r#"
@@ -177,7 +174,7 @@ impl CharactersService for CharactersServiceImpl {
             .bind(character_instance.agility)
             .bind(character_instance.intelligence)
             .bind(character_instance.vitality)
-            .execute(db_pool.as_ref())
+            .execute(&mut *db_connection)
             .await?;
 
         // invalidate cache
@@ -201,7 +198,7 @@ impl CharactersService for CharactersServiceImpl {
         let level_definition_id = self.item_definition_lookup_service.is_character_level_component_all().iter().last().unwrap().0;
         let level_inventory_item_idx = match inventory.iter().position(|x| x.item_definition_id == *level_definition_id) {
             None => {
-                return Err("Character does not have a level item".into());
+                return Err("Character does not have a level item in inventory".into());
             }
             Some(index) => {index}
         };
@@ -233,17 +230,13 @@ impl CharactersService for CharactersServiceImpl {
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         let xp_item_definition_id = self.get_xp_item_definition_id();
         let new_item = inventory_item_utils::generate_inventory_item_for_player(
-            self.item_definition_service.clone(),
-            self.random_service.clone(),
             self.item_definition_lookup_service.clone(),
-            player_uuid,
             xp_item_definition_id,
-            xp,
-            0.0, // No luck needed for XP
+            xp,  // No luck needed for XP
         );
         try_aggregate_inventories(
             self.item_definition_lookup_service.clone(),
-            vec![new_item],
+            &vec![new_item],
             inventory,
         );
         Ok(())
@@ -253,13 +246,11 @@ impl CharactersService for CharactersServiceImpl {
 impl CharactersServiceImpl {
     pub fn new(
         database_service: Arc<dyn DatabaseService + Send + Sync>,
-        item_definition_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
         item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
         random_service: Arc<dyn RandomService + Send + Sync>,
     ) -> Self {
         Self {
             database_service,
-            item_definition_service,
             item_definition_lookup_service,
             random_service,
             characters_cache: DashMap::new(),
