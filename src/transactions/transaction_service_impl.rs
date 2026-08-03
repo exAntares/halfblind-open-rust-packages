@@ -1,13 +1,11 @@
 use crate::inventory::inventory_item_utils::{generate_inventory_item_for_player, try_aggregate_inventories};
 use crate::item_definitions::ItemDefinitionLookupServiceImpl;
 use async_trait::async_trait;
-use chrono::NaiveDateTime;
 use halfblind_protobuf_network::ErrorCode;
 use halfblind_random::RandomService;
-use halfblind_transactions::{get_transaction_reward_random_value, TransactionRecord, TransactionResult, TransactionService};
+use halfblind_transactions::{DelayedReward, DelayedRewardsDatabaseInserter, TransactionResult, TransactionService, get_transaction_reward_random_value};
 use proto_gen::InventoryItem;
-use protobuf_itemdefinition::{convert_transaction_consumed, convert_transaction_required_items, convert_transaction_required_not_items, convert_transaction_rewarded, convert_transaction_rewarded_random, ItemDefinitionRef, ItemsErrorCode, PoolWeightedItemsComponent, TransactionInstance, TransactionItem, TransactionReward};
-use sqlx::PgConnection;
+use protobuf_itemdefinition::{ItemDefinitionRef, ItemsErrorCode, PoolWeightedItemsComponent, TransactionInstance, TransactionItem, TransactionReward, convert_transaction_consumed, convert_transaction_required_items, convert_transaction_required_not_items, convert_transaction_rewarded, convert_transaction_rewarded_random};
 use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -104,7 +102,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
     async fn process_inventory_transaction(
         &self,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        db_connection: &mut PgConnection,
+        repository: &mut dyn DelayedRewardsDatabaseInserter,
         player_inventory: &mut Vec<InventoryItem>,
         player_uuid: Uuid,
         required: Option<Vec<TransactionItem>>,
@@ -168,7 +166,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
         if !delayed_rewards.is_empty() {
             delayed_item_transactions = process_rewarded_items_delayed(
                 random_service.clone(),
-                db_connection,
+                repository,
                 player_uuid,
                 delayed_rewards,
             ).await.map_err(|e| {
@@ -186,7 +184,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
     async fn process_inventory_transaction_id(
         &self,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        db_connection: &mut PgConnection,
+        repository: &mut dyn DelayedRewardsDatabaseInserter,
         player_inventory: &mut Vec<InventoryItem>,
         player_uuid: Uuid,
         transaction_id: u64,
@@ -198,7 +196,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
             }).collect::<Vec<_>>());
         self.process_inventory_transaction(
             random_service,
-            db_connection,
+            repository,
             player_inventory,
             player_uuid,
             convert_transaction_required_items(self.item_definition_lookup_service.transaction_required_items_component(&transaction_id)),
@@ -260,7 +258,7 @@ fn process_rewarded_items_immediate(
 
 async fn process_rewarded_items_delayed(
     random_service: Arc<dyn RandomService + Send + Sync>,
-    db_connection: &mut PgConnection,
+    delayed_items_inserter: &mut dyn DelayedRewardsDatabaseInserter,
     player_uuid: Uuid,
     rewards: Vec<TransactionReward>,
 ) -> Result<Vec<TransactionInstance>, sqlx::Error> {
@@ -268,41 +266,17 @@ async fn process_rewarded_items_delayed(
         return Ok(Vec::new());
     }
     let now = chrono::Utc::now().naive_utc();
-    let end_times: Vec<NaiveDateTime> = rewards
+    let delayed_rewards: Vec<DelayedReward> = rewards
         .iter()
-        .map(|r| now + chrono::Duration::seconds(r.duration as i64))
+        .map(|r| DelayedReward {
+            end_at: now + chrono::Duration::seconds(r.duration as i64),
+            item_id: r.id_ref.unwrap().id as i64,
+            quantity: get_transaction_reward_random_value(random_service.clone(), r) as i64,
+        })
         .collect();
 
-    let transaction_records = sqlx::query_as::<_, TransactionRecord>(
-        r#"
-        WITH inserted AS (
-            INSERT INTO player_transactions (player_uuid, end_at, item_id, quantity)
-            SELECT $1,
-                   unnest($2::timestamp[]),
-                   unnest($3::bigint[]),
-                   unnest($4::bigint[])
-            RETURNING id, end_at, item_id, quantity
-        )
-        SELECT
-            inserted.id,
-            inserted.end_at,
-            inserted.item_id,
-            inserted.quantity
-        FROM inserted
-        "#,
-    )
-        .bind(player_uuid)
-        .bind(&end_times)
-        .bind(
-            &rewards
-                .iter()
-                .map(|r| r.id_ref.unwrap().id as i64)
-                .collect::<Vec<i64>>(),
-        )
-        .bind(&rewards.iter().map(|r| {
-            get_transaction_reward_random_value(random_service.clone(), r) as i64
-        }).collect::<Vec<i64>>())
-        .fetch_all(&mut *db_connection)
+    let transaction_records = delayed_items_inserter
+        .insert_delayed_rewards_into_database(player_uuid, delayed_rewards)
         .await?;
 
     let result = transaction_records

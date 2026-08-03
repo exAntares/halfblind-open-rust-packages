@@ -3,6 +3,7 @@ use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::handlers::utils;
 use crate::services::services::Services;
+use crate::transactions::postgress_delayed_rewards_inserter::PostgresDelayedRewardsInserter;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
 use proto_gen::{MerchantBuyItemRequest, MerchantBuyItemResponse};
@@ -47,21 +48,24 @@ async fn handle(
                     .get_db_pool()
                     .begin()
                     .await.map_err(sqlx_error_to_proto_error)?;
-                let result = match systems.transaction_service.process_inventory_transaction_id(
-                    systems.random_service.clone(),
-                    &mut db_transaction,
-                    &mut inventory_rw_lock,
-                    player_uuid,
-                    transaction.id,
-                )
-                    .await
-                {
-                    Ok(result) => result,
-                    Err(error_code) => {
-                        return Ok(build_error_response(
-                            error_code.into(),
-                            "Merchant buy failed.",
-                        ));
+                let result = {
+                    let mut delayed_items_inserter = PostgresDelayedRewardsInserter { connection: &mut db_transaction };
+                    match systems.transaction_service.process_inventory_transaction_id(
+                        systems.random_service.clone(),
+                        &mut delayed_items_inserter,
+                        &mut inventory_rw_lock,
+                        player_uuid,
+                        transaction.id,
+                    )
+                        .await
+                    {
+                        Ok(result) => result,
+                        Err(error_code) => {
+                            return Ok(build_error_response(
+                                error_code.into(),
+                                "Merchant buy failed.",
+                            ));
+                        }
                     }
                 };
                 db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;

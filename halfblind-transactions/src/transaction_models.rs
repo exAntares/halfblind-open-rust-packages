@@ -8,3 +8,10 @@ pub struct TransactionRecord {
     pub item_id: i64,
     pub quantity: i64,
 }
+
+#[derive(Clone, Debug, Copy)]
+pub struct DelayedReward {
+    pub end_at: NaiveDateTime,
+    pub item_id: i64,
+    pub quantity: i64,
+}

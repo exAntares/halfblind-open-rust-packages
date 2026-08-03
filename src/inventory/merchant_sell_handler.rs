@@ -3,6 +3,7 @@ use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::handlers::utils;
 use crate::services::services::Services;
+use crate::transactions::postgress_delayed_rewards_inserter::PostgresDelayedRewardsInserter;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
 use proto_gen::{GameErrorCode, MerchantSellItemRequest, MerchantSellItemResponse};
@@ -125,20 +126,23 @@ async fn handle(
         .get_db_pool()
         .begin()
         .await.map_err(sqlx_error_to_proto_error)?;
-    let transaction_result = match systems.transaction_service.process_inventory_transaction(
-        systems.random_service.clone(),
-        &mut db_transaction,
-        &mut inventory_rw_lock,
-        player_uuid,
-        None,
-        None,
-        Some(consumed),
-        Some(rewarded),
-        None,
-    ).await {
-        Ok(x) => {x}
-        Err(e) => {
-            return Ok(build_error_response(e.into(), &"Failed sell transaction".to_string()))
+    let transaction_result = {
+        let mut delayed_items_inserter = PostgresDelayedRewardsInserter { connection: &mut db_transaction };
+        match systems.transaction_service.process_inventory_transaction(
+            systems.random_service.clone(),
+            &mut delayed_items_inserter,
+            &mut inventory_rw_lock,
+            player_uuid,
+            None,
+            None,
+            Some(consumed),
+            Some(rewarded),
+            None,
+        ).await {
+            Ok(x) => {x}
+            Err(e) => {
+                return Ok(build_error_response(e.into(), &"Failed sell transaction".to_string()))
+            }
         }
     };
     db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;

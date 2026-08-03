@@ -5,6 +5,7 @@ use crate::inventory::inventory_item_utils::filter_visible_inventory;
 use crate::map::models::MapAction::{AddStatsToCharacter, MoveTo, PickupItem, SpawnSkill};
 use crate::map::models::MapActionTimed;
 use crate::services::services::Services;
+use crate::transactions::postgress_delayed_rewards_inserter::PostgresDelayedRewardsInserter;
 use halfblind_network::*;
 use halfblind_protobuf_network::{ErrorCode, ProtoResponse};
 use proto_gen::map_action_request::MapAction;
@@ -180,18 +181,21 @@ async fn handle(
                 .get_db_pool()
                 .begin()
                 .await.map_err(sqlx_error_to_proto_error)?;
-            match systems.transaction_service.process_inventory_transaction_id(
-                systems.random_service.clone(),
-                &mut db_transaction,
-                &mut inventory_rw_lock,
-                player_uuid,
-                teleport.transaction_id,
-            ).await {
-                Ok(_) => {}
-                Err(e) => {
-                    return Ok(build_error_response(e.into(), &"Failed transaction".to_string()))
-                }
-            };
+            {
+                let mut delayed_items_inserter = PostgresDelayedRewardsInserter { connection: &mut db_transaction };
+                match systems.transaction_service.process_inventory_transaction_id(
+                    systems.random_service.clone(),
+                    &mut delayed_items_inserter,
+                    &mut inventory_rw_lock,
+                    player_uuid,
+                    teleport.transaction_id,
+                ).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        return Ok(build_error_response(e.into(), &"Failed transaction".to_string()))
+                    }
+                };
+            }
 
             let visible_inventory: Vec<InventoryItem> = filter_visible_inventory(systems.item_definition_lookup_service.clone(), inventory_rw_lock.as_slice())
                 .into_iter()

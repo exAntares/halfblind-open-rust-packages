@@ -1,8 +1,8 @@
 use crate::TransactionResult;
+use crate::delayed_rewards_database_inserter::DelayedRewardsDatabaseInserter;
 use async_trait::async_trait;
 use halfblind_random::RandomService;
 use protobuf_itemdefinition::{TransactionItem, TransactionReward};
-use sqlx::PgConnection;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -26,11 +26,11 @@ pub trait TransactionService<T> {
         rewards: &Vec<TransactionReward>,
         random_service: Arc<dyn RandomService + Send + Sync>,
     );
-    
+
     async fn process_inventory_transaction(
         &self,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        db_connection: &mut PgConnection,
+        delayed_items_inserter: &mut dyn DelayedRewardsDatabaseInserter,
         player_inventory: &mut Vec<T>,
         player_uuid: Uuid,
         required: Option<Vec<TransactionItem>>,
@@ -39,11 +39,11 @@ pub trait TransactionService<T> {
         rewarded: Option<Vec<TransactionReward>>,
         rewards_random: Option<Vec<protobuf_itemdefinition::PoolWeightedItemsComponent>>,
     ) -> Result<TransactionResult<T>, i32>;
-    
+
     async fn process_inventory_transaction_id(
         &self,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        db_connection: &mut PgConnection,
+        delayed_items_inserter: &mut dyn DelayedRewardsDatabaseInserter,
         player_inventory: &mut Vec<T>,
         player_uuid: Uuid,
         transaction_id: u64,
