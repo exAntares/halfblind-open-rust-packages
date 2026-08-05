@@ -43,7 +43,13 @@ pub fn build_error_response(
     code: i32,
     msg: &str
 ) -> ProtoResponse {
-    eprintln!("Error [{}]: {}", code, msg);
+    if code == ErrorCode::UnknownError as i32 {
+        let backtrace = std::backtrace::Backtrace::capture();
+        eprintln!("Error [{}]: {}\n{}", code, msg, backtrace);
+    } else {
+        eprintln!("Error [{}]: {}", code, msg);
+    }
+
     ProtoResponse {
         server_now: get_now(),
         message_id: 0, // Assigned before sending back to the player
