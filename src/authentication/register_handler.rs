@@ -14,19 +14,19 @@ use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(RegisterRequest => RegisterHandler, Services);
+request_handler!(RegisterRequest => RegisterResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     req: RegisterRequest,
     _ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-    ) -> Result<ProtoResponse, ProtoResponse> {
+    ) -> Result<RegisterResponse, ProtoResponse> {
     let db_pool = systems.database_service.get_db_pool();
     let device_uuid = match Uuid::parse_str(&req.device_id) {
         Ok(player_uuid) => player_uuid,
         Err(_) => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 ErrorCode::InvalidRequest as i32,
                 &format!("Register is not a valid UUID {}", req.device_id),
             ));
@@ -46,7 +46,7 @@ async fn handle(
         .get::<bool, _>(0);
 
     if player_exists {
-        return Ok(build_error_response(
+        return Err(build_error_response(
             ErrorCode::UserAlreadyExists as i32,
             "",
         ));
@@ -102,7 +102,7 @@ async fn handle(
         player_uuid: player_uuid.to_string(),
         token: password.to_string(),
     };
-    encode_ok(&response)
+    Ok(response)
 }
 
 #[derive(Debug)]

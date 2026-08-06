@@ -8,14 +8,14 @@ use proto_gen::{TransactionResolveRequest, TransactionResolveResponse};
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(TransactionResolveRequest => TransactionResolveHandler, Services);
+request_handler!(TransactionResolveRequest => TransactionResolveResponse, Services);
 
 async fn handle(
     message_timestamp: u64,
     req: TransactionResolveRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-    ) -> Result<ProtoResponse, ProtoResponse> {
+    ) -> Result<TransactionResolveResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
     let transaction_id = match Uuid::parse_str(&req.id) {
         Ok(id) => id,
@@ -36,7 +36,7 @@ async fn handle(
         .await;
     match result {
         Err((error_code, _)) => {
-            return Ok(build_error_response(error_code.into(), ""));
+            return Err(build_error_response(error_code.into(), ""));
         }
         _ => {}
     };
@@ -50,5 +50,5 @@ async fn handle(
     let response = TransactionResolveResponse {
         inventory: inventory.read().await.clone(),
     };
-    encode_ok(&response)
+    Ok(response)
 }

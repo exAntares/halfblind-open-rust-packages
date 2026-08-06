@@ -10,20 +10,20 @@ use proto_gen::{GameErrorCode, MerchantSellItemRequest, MerchantSellItemResponse
 use ::protobuf_itemdefinition::*;
 use std::sync::Arc;
 
-request_handler!(MerchantSellItemRequest => MerchantSellItemRequestHandler, Services);
+request_handler!(MerchantSellItemRequest => MerchantSellItemResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     req: MerchantSellItemRequest,
     ctx: std::sync::Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<MerchantSellItemResponse, ProtoResponse> {
     // Ensure player is authenticated
     let (player_uuid, character_uuid) = utils::validate_character_and_player_uuid(&ctx, systems.clone(), req.character_uuid).await?;
 
     let merchant_comp = match systems.item_definition_lookup_service.merchant_available_items_component(&req.merchant_definition_id) {
         None => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 GameErrorCode::MerchantInvalid as i32,
                 "This merchant does not exist or is not available for sale.",
             ));
@@ -32,7 +32,7 @@ async fn handle(
     };
     let to_sell = match req.item {
         None => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 ItemsErrorCode::InvalidItemInstance.into(),
                 "Invalid item instance",
             ));
@@ -40,13 +40,13 @@ async fn handle(
         Some(to_sell) => {to_sell}
     };
     if to_sell.is_equipped {
-        return Ok(build_error_response(
+        return Err(build_error_response(
             GameErrorCode::UserCantSellItem.into(),
             "Cannot sell equipped items",
         ));
     }
     if let Some(hidden_comp) = systems.item_definition_lookup_service.inventory_hidden_item_component(&to_sell.item_definition_id) {
-        return Ok(build_error_response(
+        return Err(build_error_response(
             GameErrorCode::UserCantSellItem.into(),
             "Cannot sell hidden items like xp or quest items",
         ));
@@ -55,7 +55,7 @@ async fn handle(
     // TODO: some merchants may buy items for a different value check that first
     let (to_sell, gains) = match systems.item_definition_lookup_service.default_sell_value_component(&to_sell.item_definition_id) {
         None => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 GameErrorCode::UserCantSellItem.into(),
                 "Cannot sell items without a sell value",
             ));
@@ -71,7 +71,7 @@ async fn handle(
     {
         Ok(inventory_lock) => inventory_lock,
         Err(_) => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 halfblind_protobuf_network::ErrorCode::UnknownError.into(),
                 "Inventory does not exist",
             ));
@@ -82,10 +82,10 @@ async fn handle(
         None => {
             // Non-stackable item check for the instance id
             match inventory_rw_lock.iter().find(|x| x.item_instance_id == to_sell.item_instance_id) {
-                None => return Ok(build_error_response(ItemsErrorCode::NotEnoughItems.into(), "Cannot sell non-stackable items that are already in inventory")),
+                None => return Err(build_error_response(ItemsErrorCode::NotEnoughItems.into(), "Cannot sell non-stackable items that are already in inventory")),
                 Some(item) => {
                     if item.amount < to_sell.amount {
-                        return Ok(build_error_response(
+                        return Err(build_error_response(
                             ItemsErrorCode::NotEnoughItems.into(),
                             "Cannot sell more items than are present in inventory",
                         ));
@@ -95,10 +95,10 @@ async fn handle(
         }
         Some(_) => {
             match inventory_rw_lock.iter().find(|x| x.item_definition_id == to_sell.item_definition_id) {
-                None => return Ok(build_error_response(ItemsErrorCode::NotEnoughItems.into(), "Cannot sell items that are not already in inventory")),
+                None => return Err(build_error_response(ItemsErrorCode::NotEnoughItems.into(), "Cannot sell items that are not already in inventory")),
                 Some(item) => {
                     if item.amount < to_sell.amount {
-                        return Ok(build_error_response(
+                        return Err(build_error_response(
                             ItemsErrorCode::NotEnoughItems.into(),
                             "Cannot sell more items than are present in inventory",
                         ));
@@ -128,7 +128,7 @@ async fn handle(
         .await.map_err(sqlx_error_to_proto_error)?;
     let transaction_result = {
         let mut delayed_items_inserter = PostgresDelayedRewardsInserter { connection: &mut db_transaction };
-        match systems.transaction_service.process_inventory_transaction(
+        systems.transaction_service.process_inventory_transaction(
             systems.random_service.clone(),
             &mut delayed_items_inserter,
             &mut inventory_rw_lock,
@@ -138,14 +138,9 @@ async fn handle(
             Some(consumed),
             Some(rewarded),
             None,
-        ).await {
-            Ok(x) => {x}
-            Err(e) => {
-                return Ok(build_error_response(e.into(), &"Failed sell transaction".to_string()))
-            }
-        }
+        ).await.map_err(|e|build_error_response(e.into(), &"Failed sell transaction".to_string()))?
     };
     db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;
     let result = MerchantSellItemResponse { inventory: transaction_result.inventory };
-    encode_ok(&result)
+    Ok(result)
 }

@@ -9,14 +9,14 @@ use proto_gen::{CheatAddInventoryItemRequest, CheatAddInventoryItemResponse};
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(CheatAddInventoryItemRequest => CheatAddInventoryItemHandler, Services);
+request_handler!(CheatAddInventoryItemRequest => CheatAddInventoryItemResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     req: CheatAddInventoryItemRequest,
     _ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<CheatAddInventoryItemResponse, ProtoResponse> {
     #[cfg(feature = "cheats")]
     {
         let inventory_service = systems.inventory_service.clone();
@@ -42,7 +42,7 @@ async fn handle(
             character_uuid: req.character_uuid,
             inventory: character_inventory_rw.clone(),
         };
-        return encode_ok(&response)
+        return Ok(response)
     }
     Err(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), &"No cheats in production. Please enable the \"cheats\" feature.".to_string()))
 }

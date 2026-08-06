@@ -6,21 +6,21 @@ use halfblind_protobuf_network::ProtoResponse;
 use proto_gen::{PlayerInventoryRequest, PlayerInventoryResponse};
 use std::sync::Arc;
 
-request_handler!(PlayerInventoryRequest => PlayerInventoryRequestHandler, Services);
+request_handler!(PlayerInventoryRequest => PlayerInventoryResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     _: PlayerInventoryRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<PlayerInventoryResponse, ProtoResponse> {
     // Ensure player is authenticated
     let player_uuid = validate_player_context(&ctx)?;
 
     let result = match systems.inventory_service.get_player_inventory(player_uuid).await {
         Ok(inventory) => inventory,
         Err(_) => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 halfblind_protobuf_network::ErrorCode::UnknownError.into(),
                 "Inventory does not exist",
             ));
@@ -30,5 +30,5 @@ async fn handle(
     let response = PlayerInventoryResponse {
         inventory: player_inventory,
     };
-    encode_ok(&response)
+    Ok(response)
 }

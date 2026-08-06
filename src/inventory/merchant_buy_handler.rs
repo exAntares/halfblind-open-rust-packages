@@ -10,30 +10,30 @@ use proto_gen::{MerchantBuyItemRequest, MerchantBuyItemResponse};
 use protobuf_itemdefinition::ItemsErrorCode;
 use std::sync::Arc;
 
-request_handler!(MerchantBuyItemRequest => MerchantBuyItemRequestHandler, Services);
+request_handler!(MerchantBuyItemRequest => MerchantBuyItemResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     req: MerchantBuyItemRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<MerchantBuyItemResponse, ProtoResponse> {
     // Ensure player is authenticated
     let (player_uuid, character_uuid) = match utils::validate_character_and_player_uuid(&ctx, systems.clone(), req.character_uuid).await {
         Ok(x) => x,
-        Err(response) => return Ok(response),
+        Err(response) => return Err(response),
     };
 
     match systems.item_definition_lookup_service.merchant_available_items_component(&req.merchant_definition_id) {
         None => {
-            Ok(build_error_response(
+            Err(build_error_response(
                 ItemsErrorCode::InvalidItemDefinition.into(),
                 "Merchant does not exist",
             ))
         }
         Some(merchant_component) => {
             if merchant_component.available_transactions.iter().len() <= req.item_index as usize {
-                Ok(build_error_response(
+                Err(build_error_response(
                     halfblind_protobuf_network::ErrorCode::InvalidRequest.into(),
                     "Item index is out of bounds",
                 ))
@@ -41,7 +41,7 @@ async fn handle(
                 let transaction = merchant_component.available_transactions[req.item_index as usize].clone();
                 let inventory_arc = match systems.inventory_service.get_inventory(player_uuid, character_uuid).await {
                     Ok(inventory_lock) => inventory_lock,
-                    Err(e) => return Ok(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), "Inventory does not exist")),
+                    Err(e) => return Err(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), "Inventory does not exist")),
                 };
                 let mut inventory_rw_lock = inventory_arc.write().await;
                 let mut db_transaction = systems.database_service.clone()
@@ -61,7 +61,7 @@ async fn handle(
                     {
                         Ok(result) => result,
                         Err(error_code) => {
-                            return Ok(build_error_response(
+                            return Err(build_error_response(
                                 error_code.into(),
                                 "Merchant buy failed.",
                             ));
@@ -72,7 +72,7 @@ async fn handle(
                 let response = MerchantBuyItemResponse {
                     inventory: result.inventory,
                 };
-                encode_ok(&response)
+                Ok(response)
             }
         }
     }

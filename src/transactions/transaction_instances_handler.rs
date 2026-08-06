@@ -7,14 +7,14 @@ use halfblind_transactions::TransactionRecord;
 use ::protobuf_itemdefinition::*;
 use std::sync::Arc;
 
-request_handler!(TransactionInstancesRequest => TransactionInstancesHandler, Services);
+request_handler!(TransactionInstancesRequest => TransactionInstancesResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     _: TransactionInstancesRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<TransactionInstancesResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
     let db_pool = systems.database_service.get_db_pool();
     // Query pending transactions from the database
@@ -54,5 +54,5 @@ async fn handle(
     let response = TransactionInstancesResponse {
         transactions: transactions_instances,
     };
-    encode_ok(&response)
+    Ok(response)
 }

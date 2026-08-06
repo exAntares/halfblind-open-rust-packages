@@ -11,20 +11,20 @@ use proto_gen::{ClaimQuestResponse, GameErrorCode};
 use protobuf_itemdefinition::ItemsErrorCode;
 use std::sync::Arc;
 
-request_handler!(ClaimQuestRequest => ClaimQuestRequestHandler, Services);
+request_handler!(ClaimQuestRequest => ClaimQuestResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     req: ClaimQuestRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<ClaimQuestResponse, ProtoResponse> {
     let character_uuid_str = req.character_uuid;
     let (player_uuid, character_uuid) = utils::validate_character_and_player_uuid(&ctx, systems.clone(), character_uuid_str).await?;
 
     let quest_definition_id = req.quest_definition_id;
     if systems.item_definition_lookup_service.transaction_component(&quest_definition_id).is_none() {
-        return Ok(build_error_response(
+        return Err(build_error_response(
             ItemsErrorCode::TransactionInvalid.into(),
             "Quest is not a transaction",
         ));
@@ -39,12 +39,12 @@ async fn handle(
         .iter()
         .find(|item| item.item_definition_id == quest_definition_id);
     let quest_status = match quest_inventory_item {
-        None => return Ok(build_error_response(GameErrorCode::QuestIsNotAvailable.into(), "Quest is not available")),
+        None => return Err(build_error_response(GameErrorCode::QuestIsNotAvailable.into(), "Quest is not available")),
         Some(res) => res,
     };
 
     if quest_status.amount != (QuestStatus::InProgress as u64) {
-        return Ok(build_error_response(GameErrorCode::QuestIsNotAvailable.into(), "Quest is not in progress!!"));
+        return Err(build_error_response(GameErrorCode::QuestIsNotAvailable.into(), "Quest is not in progress!!"));
     }
     let mut db_transaction = systems.database_service.clone()
         .get_db_pool()
@@ -64,5 +64,5 @@ async fn handle(
     };
     db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;
     let response = ClaimQuestResponse {};
-    encode_ok(&response)
+    Ok(response)
 }

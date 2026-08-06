@@ -15,20 +15,20 @@ use protobuf_itemdefinition::ItemsErrorCode;
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(MapActionRequest => MapActionRequestHandler, Services);
+request_handler!(MapActionRequest => MapActionResponse, Services);
 
 async fn handle(
     message_timestamp: u64,
     req: MapActionRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<MapActionResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
     let character_uuid_str = req.character_uuid;
     let character_uuid = match Uuid::parse_str(&character_uuid_str) {
         Ok(c) => c,
         Err(_) => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 GameErrorCode::InvalidCharacter.into(),
                 "Invalid character UUID",
             ));
@@ -38,7 +38,7 @@ async fn handle(
     // Get the player's current map
     let game_map= match systems.maps_service.get_player_map(&player_uuid) {
         None => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 GameErrorCode::PlayerIsNotInAnyMap.into(),
                 "Player is not on any map!",
             ));
@@ -49,14 +49,14 @@ async fn handle(
     // Check if the character is owned by the player requesting the action.
     match game_map.player_by_character.get(&character_uuid) {
         None => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 GameErrorCode::InvalidCharacter.into(),
                 "There is no player for requested character on this map.",
             ));
         }
         Some(player_by_character) => {
             if player_by_character.value().clone() != player_uuid.clone() {
-                return Ok(build_error_response(
+                return Err(build_error_response(
                     GameErrorCode::InvalidCharacter.into(),
                     "Player is requesting action for another player!",
                 ));
@@ -66,7 +66,7 @@ async fn handle(
 
     let action = match req.map_action {
         None => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 halfblind_protobuf_network::ErrorCode::UnknownError.into(),
                 "Invalid MapAction",
             ));
@@ -83,7 +83,7 @@ async fn handle(
                 },
             });
             let response = MapActionResponse {};
-            encode_ok(&response)
+            Ok(response)
         }
         MapAction::UsableSkill(skill_request) => {
             if let Some(skill_comp) =
@@ -92,7 +92,7 @@ async fn handle(
                 let character_inventory_guard = match systems.inventory_service.get_inventory(player_uuid, character_uuid).await {
                     Ok(x) => {x}
                     Err(e) => {
-                        return Ok(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), format!("Failed to get character inventory: {}", e).as_str()));
+                        return Err(build_error_response(halfblind_protobuf_network::ErrorCode::UnknownError.into(), format!("Failed to get character inventory: {}", e).as_str()));
                     }
                 };
                 let character_inventory = character_inventory_guard.read().await;
@@ -104,7 +104,7 @@ async fn handle(
                     }
                 }
                 if !found {
-                    return Ok(build_error_response(
+                    return Err(build_error_response(
                         GameErrorCode::SkillNotOwned.into(),
                         &format!("Character does not have such Skill {}", skill_request.skill_definition_id)));
                 }
@@ -119,9 +119,9 @@ async fn handle(
                     },
                 });
                 let response = MapActionResponse {};
-                encode_ok(&response)
+                Ok(response)
             } else {
-                Ok(build_error_response(
+                Err(build_error_response(
                     ItemsErrorCode::InvalidItemDefinition.into(),
                     "Skill does not exist!",
                 ))
@@ -146,7 +146,7 @@ async fn handle(
                         },
                     });
                     let response = MapActionResponse {};
-                    encode_ok(&response)
+                    Ok(response)
                 }
                 Err(_) => {
                     Err(build_error_response(ErrorCode::UnknownError.into(), "Failed to get character inventory"))
@@ -192,7 +192,7 @@ async fn handle(
                 ).await {
                     Ok(_) => {}
                     Err(e) => {
-                        return Ok(build_error_response(e.into(), &"Failed transaction".to_string()))
+                        return Err(build_error_response(e.into(), &"Failed transaction".to_string()))
                     }
                 };
             }
@@ -218,7 +218,7 @@ async fn handle(
                 Ok(_) => {
                     db_transaction.commit().await.map_err(sqlx_error_to_proto_error)?;
                     let response = MapActionResponse {};
-                    encode_ok(&response)
+                    Ok(response)
                 }
                 Err(e) => Err(build_error_response(
                     ErrorCode::UnknownError.into(),
@@ -246,7 +246,7 @@ async fn handle(
                 },
             });
             let response = MapActionResponse {};
-            encode_ok(&response)
+            Ok(response)
         }
     }
 }

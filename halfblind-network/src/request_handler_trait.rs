@@ -25,12 +25,14 @@ macro_rules! define_request_handler_type {
 
 #[macro_export]
 macro_rules! request_handler {
-    ($request:ident => $handler:ident, $service_locator_type:ty) => {
+    ($request:ident => $response:ty, $service_locator_type:ty) => {
+        type HandleResult = Result<$response, halfblind_protobuf_network::ProtoResponse>;
+
         #[derive(Default)]
-        pub struct $handler;
+        struct RequestHandlerImpl;
 
         #[async_trait::async_trait]
-        impl RequestHandler for $handler {
+        impl RequestHandler for RequestHandlerImpl {
             async fn handle(
                 &self,
                 message_timestamp: u64,
@@ -41,10 +43,11 @@ macro_rules! request_handler {
                 let instant = std::time::Instant::now();
                 let req = halfblind_network::decode_or_error::<$request>(payload)?;
                 // Call the local 'handle' function
-                let result = handle(message_timestamp, req, ctx, services_locator.clone()).await;
+                let result: HandleResult = handle(message_timestamp, req, ctx, services_locator.clone()).await;
+                let result = result?;
                 #[cfg(feature = "profile-network-requests")]
                 println!("{} took {:?}", stringify!($request), instant.elapsed());
-                result
+                halfblind_network::utils::encode_ok(&result)
             }
         }
 
@@ -53,7 +56,7 @@ macro_rules! request_handler {
         inventory::submit! {
             HandlerRegistration {
                 type_url: || halfblind_protobuf::get_type_url::<$request>(),
-                handler: || std::sync::Arc::new(<$handler>::default()),
+                handler: || std::sync::Arc::new(RequestHandlerImpl::default()),
             }
         }
     };

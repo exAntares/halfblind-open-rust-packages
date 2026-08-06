@@ -8,14 +8,14 @@ use proto_gen::{CharacterInstance, CharacterPrivateInstance, InventoryItem};
 use proto_gen::{CharactersQueryRequest, CharactersQueryResponse};
 use std::sync::Arc;
 
-request_handler!(CharactersQueryRequest => CharactersQueryRequestHandler, Services);
+request_handler!(CharactersQueryRequest => CharactersQueryResponse, Services);
 
 async fn handle(
     message_timestamp: u64,
     req: CharactersQueryRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<CharactersQueryResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
 
     let characters;
@@ -76,5 +76,5 @@ async fn handle(
         });
     }
     let response = CharactersQueryResponse { owned_characters };
-    encode_ok(&response)
+    Ok(response)
 }

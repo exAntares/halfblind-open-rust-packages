@@ -1,21 +1,21 @@
+use crate::Services;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::handlers::utils;
 use crate::inventory::inventory_item_utils::filter_visible_inventory;
-use crate::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::ProtoResponse;
 use proto_gen::{GameErrorCode, InventoryItem, MapJoinRequest, MapJoinResponse};
 use std::sync::Arc;
 
-request_handler!(MapJoinRequest => MapJoinRequestHandler, Services);
+request_handler!(MapJoinRequest => MapJoinResponse, Services);
 
 async fn handle(
     message_timestamp: u64,
     req: MapJoinRequest,
     ctx: std::sync::Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<MapJoinResponse, ProtoResponse> {
     let (player_uuid, character_uuid) = match utils::validate_character_and_player_uuid(
         &ctx,
         systems.clone(),
@@ -24,7 +24,7 @@ async fn handle(
         .await
     {
         Ok(character_uuid) => character_uuid,
-        Err(response) => return Ok(response),
+        Err(response) => return Err(response),
     };
 
     // Check if the character already exists
@@ -36,7 +36,7 @@ async fn handle(
         {
             Ok(_) => {}
             Err(e) => {
-                return Ok(build_error_response(
+                return Err(build_error_response(
                     GameErrorCode::InvalidCharacter.into(),
                     format!("Character ID does not exist in db {}", e).as_ref(),
                 ));
@@ -51,7 +51,7 @@ async fn handle(
     let character_inventory = match character_inventory {
         Ok(inventory) => inventory,
         Err(_) => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 GameErrorCode::InvalidCharacter.into(),
                 "Failed to find character inventory",
             ));
@@ -86,7 +86,7 @@ async fn handle(
             {
                 Ok(map) => map,
                 Err(e) => {
-                    return Ok(build_error_response(
+                    return Err(build_error_response(
                         GameErrorCode::InvalidMapId.into(),
                         format!("Map was invalid {}", e).as_ref(),
                     ));
@@ -98,5 +98,5 @@ async fn handle(
         map_uuid: game_map.map_id,
         character_uuid: character_uuid.to_string(),
     };
-    encode_ok(&response)
+    Ok(response)
 }

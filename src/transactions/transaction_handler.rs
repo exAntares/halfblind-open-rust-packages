@@ -11,14 +11,14 @@ use ::protobuf_itemdefinition::*;
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(TransactionRequest => TransactionHandler, Services);
+request_handler!(TransactionRequest => TransactionResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     req: TransactionRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-    ) -> Result<ProtoResponse, ProtoResponse> {
+    ) -> Result<TransactionResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
     if let Err(error_code) = get_transaction_definition(systems.item_definition_lookup_service.clone(), req.transaction_id).await {
         return Err(build_error_response(
@@ -57,7 +57,7 @@ async fn handle(
         {
             Ok(result) => result,
             Err(error_code) => {
-                return Ok(build_error_response(
+                return Err(build_error_response(
                     error_code.into(),
                     "Transaction failed.",
                 ));
@@ -70,7 +70,7 @@ async fn handle(
         inventory: result.inventory,
         rewarded: result.rewarded,
     };
-    encode_ok(&response)
+    Ok(response)
 }
 
 pub async fn get_transaction_definition(

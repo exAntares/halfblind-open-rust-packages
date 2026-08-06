@@ -7,20 +7,20 @@ use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(LoginRequest => LoginHandler, Services);
+request_handler!(LoginRequest => LoginResponse, Services);
 
 async fn handle(
     _message_timestamp: u64,
     req: LoginRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-    ) -> Result<ProtoResponse, ProtoResponse> {
+    ) -> Result<LoginResponse, ProtoResponse> {
     let db_pool = systems.database_service.get_db_pool();
     let player_uuid = match Uuid::parse_str(&req.player_uuid) {
         Ok(uuid) => uuid,
         Err(e) => {
             eprintln!("Invalid player UUID: {}", e);
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 ErrorCode::InvalidRequest.into(),
                 "Invalid player UUID",
             ));
@@ -31,7 +31,7 @@ async fn handle(
         Ok(token) => token,
         Err(e) => {
             eprintln!("Invalid auth token: {}", e);
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 ErrorCode::InvalidRequest.into(),
                 "Invalid auth token",
             ));
@@ -45,7 +45,7 @@ async fn handle(
             .fetch_one(db_pool.as_ref())
             .await {
             Ok(x) => x,
-            Err(e) => return Ok(build_error_response(
+            Err(e) => return Err(build_error_response(
                 ErrorCode::AuthenticationFailed.into(),
                 &format!("Failed to check player existence: {}", e),
             )),
@@ -53,7 +53,7 @@ async fn handle(
             .get::<bool, _>(0);
 
     if !player_exists {
-        return Ok(build_error_response(
+        return Err(build_error_response(
             ErrorCode::AuthenticationFailed.into(),
             "Player not found or invalid token",
         ));
@@ -63,6 +63,6 @@ async fn handle(
     let response = LoginResponse {
         player_uuid: player_uuid.to_string(),
     };
-    encode_ok(&response)
+    Ok(response)
 }
 

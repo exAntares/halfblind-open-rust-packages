@@ -14,14 +14,14 @@ use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
 
-request_handler!(CharacterCreateRequest => CharacterCreateRequestHandler, Services);
+request_handler!(CharacterCreateRequest => CharacterCreateResponse, Services);
 
 async fn handle(
     message_timestamp: u64,
     req: CharacterCreateRequest,
     ctx: Arc<ConnectionContext>,
     systems: Arc<Services>,
-) -> Result<ProtoResponse, ProtoResponse> {
+) -> Result<CharacterCreateResponse, ProtoResponse> {
     let player_uuid = validate_player_context(&ctx)?;
     let character_name = req.character_name.clone();
     let character_definition_id = req.character_definition_id;
@@ -66,7 +66,7 @@ async fn handle(
     let character_definition =
         match CHARACTER_DEFINITION_COMPONENT_LOOKUP.get(&character_definition_id) {
             None => {
-                return Ok(build_error_response(
+                return Err(build_error_response(
                     ItemsErrorCode::InvalidItemDefinition as i32,
                     "Unknown character definition id",
                 ));
@@ -86,7 +86,7 @@ async fn handle(
     {
         Ok(r) => r,
         Err(e) => {
-            return Ok(build_error_response(
+            return Err(build_error_response(
                 halfblind_protobuf_network::ErrorCode::UnknownError as i32,
                 &format!("Failure creating character: {}", e),
             ));
@@ -147,7 +147,7 @@ async fn handle(
             statuses: Vec::new(),
         }),
     };
-    encode_ok(&response)
+    Ok(response)
 }
 
 pub async fn add_default_inventory_to_character(
