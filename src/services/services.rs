@@ -12,20 +12,19 @@ use halfblind_inventory_service::InventoryService;
 use halfblind_itemdefinitions_service::{ItemDefinitionsService, ItemDefinitionsServiceImpl};
 use halfblind_random::{RandomService, RandomServiceImpl};
 use halfblind_transactions::TransactionService;
-use once_cell::sync::{Lazy, OnceCell};
 use prost::Message;
 use proto_gen::InventoryItem;
 use protobuf_itemdefinition::ItemDefinitionsResponse;
 use sqlx::{Pool, Postgres};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock, OnceLock};
 
 // Having the bytes at compile time is amazing
 const ITEM_DEFS_BYTES: &[u8] = include_bytes!("../../data/ItemDefinitions.bytes");
 
-static ITEM_DEFINITIONS_RESPONSE_DEFAULT: Lazy<ItemDefinitionsResponse> =
-    Lazy::new(|| ItemDefinitionsResponse::decode(ITEM_DEFS_BYTES).unwrap());
+static ITEM_DEFINITIONS_RESPONSE_DEFAULT: LazyLock<ItemDefinitionsResponse> =
+    LazyLock::new(|| ItemDefinitionsResponse::decode(ITEM_DEFS_BYTES).unwrap());
 
-pub static POOL: OnceCell<Arc<Pool<Postgres>>> = OnceCell::new();
+pub static POOL: OnceLock<Arc<Pool<Postgres>>> = OnceLock::new();
 
 pub fn create_arc_services() -> Arc<Services> {
     let pool = POOL.get().expect("Database POOL must be initialized before accessing services");

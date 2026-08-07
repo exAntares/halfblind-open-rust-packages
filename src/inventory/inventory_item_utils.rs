@@ -1,12 +1,11 @@
-use crate::item_definitions::{ItemDefinitionLookupServiceImpl, INVENTORY_HIDDEN_ITEM_COMPONENT_LOOKUP};
+use crate::item_definitions::{INVENTORY_HIDDEN_ITEM_COMPONENT_LOOKUP, ItemDefinitionLookupServiceImpl};
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_random::RandomService;
-use once_cell::sync::Lazy;
 use prost::Message;
 use proto_gen::{InventoryItem, ItemAttributeDefinition};
 use std::cmp::max;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use uuid::Uuid;
 
 pub fn generate_inventory_item_for_player_default(
@@ -129,7 +128,7 @@ pub fn try_aggregate_inventories(
 ///  - filter_inventory_items_by_component(&items, &InventoryHiddenItemComponentLookup);
 pub fn filter_inventory_items_by_component<M>(
     items: &[InventoryItem],
-    lookup: &Lazy<HashMap<u64, Arc<M>>>,
+    lookup: &LazyLock<HashMap<u64, Arc<M>>>,
 ) -> Vec<InventoryItem>
 where
     M: Clone + Message + Default + Send + Sync + 'static,

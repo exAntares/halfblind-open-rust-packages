@@ -73,16 +73,15 @@ impl ItemDefinitionLookupServiceImpl {{
 fn generate_component_lookups(component_types: &HashSet<String>, definitions: &[ItemDefinition]) -> String {
     let mut code = String::new();
     code.push_str("use std::collections::HashMap;\n");
-    code.push_str("use once_cell::sync::Lazy;\n");
     code.push_str("use proto_gen::*;\n");
     code.push_str("use ::protobuf_itemdefinition::*;\n");
     code.push_str("use prost::Message;\n\n");
-    code.push_str("use std::sync::Arc;\n\n");
+    code.push_str("use std::sync::{Arc, LazyLock};\n\n");
     code.push_str("const ITEM_DEFS_BYTES: &[u8] = include_bytes!(\"../../../../../data/ItemDefinitions.bytes\");\n\n");
 
     code.push_str(
-        "static ITEM_DEFINITIONS_RESPONSE_DEFAULT: Lazy<ItemDefinitionsResponse> =\
-     Lazy::new(|| ItemDefinitionsResponse::decode(ITEM_DEFS_BYTES).unwrap_or_default());\n\n",
+        "static ITEM_DEFINITIONS_RESPONSE_DEFAULT: LazyLock<ItemDefinitionsResponse> =\
+     LazyLock::new(|| ItemDefinitionsResponse::decode(ITEM_DEFS_BYTES).unwrap_or_default());\n\n",
     );
 
     // Generate hashmaps for each component type
@@ -206,7 +205,7 @@ fn generate_component_lookup(
             )}).collect::<Vec<_>>();
         code.push_str(&format!(
             r#"
-pub static {}: Lazy<Arc<{}>> = Lazy::new(|| {{
+pub static {}: LazyLock<Arc<{}>> = LazyLock::new(|| {{
 {}
 }});
 
@@ -221,7 +220,7 @@ pub const {}_ID: u64 = {};
         return code;
     }
     code.push_str(&format!(
-        "pub static {}: Lazy<HashMap<u64, Arc<{}>>> = Lazy::new(|| {{\n",
+        "pub static {}: LazyLock<HashMap<u64, Arc<{}>>> = LazyLock::new(|| {{\n",
         to_snake_case_upper(static_name.as_str()), component_type_clean
     ));
     code.push_str("    let mut map = HashMap::new();\n");

@@ -1503,7 +1503,6 @@ dependencies = [
  "halfblind-random",
  "halfblind-transactions",
  "inventory",
- "once_cell",
  "prost",
  "prost-types",
  "proto-gen",

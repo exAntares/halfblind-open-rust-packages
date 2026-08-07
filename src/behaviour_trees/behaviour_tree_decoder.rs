@@ -1,14 +1,13 @@
 use crate::behaviour_trees::behaviour_tree_node::BehaviorTreeNode;
 use dashmap::DashMap;
 use halfblind_protobuf::get_type_url;
-use once_cell::sync::Lazy;
 use prost::Message;
 use proto_gen::{BehaviourTreeComponent, BtNode, BtNodeCalculateRandomPosition, BtNodeIsCharacterInRange, BtNodeMoveToRandomLocation, BtNodeRepeat, BtNodeSelector, BtNodeSequence, BtNodeSpawnSkillOnTarget, BtNodeWait, BtRepeatMode};
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use uuid::Uuid;
 
-static BEHAVIOUR_TREES_MAP : Lazy<DashMap<u64, Arc<BehaviorTreeNode>>> = Lazy::new(|| DashMap::new());
+static BEHAVIOUR_TREES_MAP : LazyLock<DashMap<u64, Arc<BehaviorTreeNode>>> = LazyLock::new(|| DashMap::new());
 
 pub fn get_behavior_tree_node(definition_id: u64, component: &BehaviourTreeComponent) -> Option<Arc<BehaviorTreeNode>> {
     match BEHAVIOUR_TREES_MAP.get(&definition_id) {
@@ -58,7 +57,7 @@ fn convert_children(
 
 type DecodeFn = fn(prost_types::Any) -> Option<BehaviorTreeNode>;
 
-static DECODERS : Lazy<HashMap<String, DecodeFn>> = Lazy::new(||{
+static DECODERS : LazyLock<HashMap<String, DecodeFn>> = LazyLock::new(||{
     let mut result = HashMap::new();
     register_all(&mut result);
     result
