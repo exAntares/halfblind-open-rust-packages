@@ -1,7 +1,7 @@
 use crate::behaviour_trees::behaviour_tree_map_context::BehaviourTreeMapContext;
 use crate::behaviour_trees::behaviour_tree_status::BTStatus;
 use crate::behaviour_trees::utils::move_to_positions;
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use crate::map::models::{MapEntities, TargetPositions};
 use dashmap::DashMap;
 use glam::Vec2;
@@ -54,7 +54,7 @@ pub enum BehaviourTreeNodeState {
 
 impl BehaviorTreeNode {
     pub fn tick(&self,
-                item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+                item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
                 node_state: &mut DashMap<Uuid, BehaviourTreeNodeState>,
                 ctx: &mut BehaviourTreeMapContext,
     ) -> BTStatus {

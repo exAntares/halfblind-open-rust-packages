@@ -2,7 +2,7 @@ use crate::characters::characters_service::CharactersService;
 use crate::characters::models::DatabaseCharacter;
 use crate::inventory::inventory_item_utils;
 use crate::inventory::inventory_item_utils::try_aggregate_inventories;
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_database_service::DatabaseService;
@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 pub struct CharactersServiceImpl {
     database_service: Arc<dyn DatabaseService + Send + Sync>,
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
     characters_cache: DashMap<Uuid, Vec<Arc<RwLock<DatabaseCharacter>>>>,
 
@@ -246,7 +246,7 @@ impl CharactersService for CharactersServiceImpl {
 impl CharactersServiceImpl {
     pub fn new(
         database_service: Arc<dyn DatabaseService + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
     ) -> Self {
         Self {

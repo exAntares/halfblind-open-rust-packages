@@ -1,6 +1,6 @@
 use crate::characters::characters_service::CharactersService;
 use crate::inventory::inventory_item_utils::{filter_visible_inventory, try_aggregate_inventories};
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use crate::map::game_map::GameMap;
 use crate::map::maps_service::MapsService;
 use crate::map::models::MapAction::SpawnMob;
@@ -12,7 +12,7 @@ use futures_util::SinkExt;
 use halfblind_inventory_service::InventoryService;
 use halfblind_network::*;
 use halfblind_random::RandomService;
-use proto_gen::{entity_position, CharacterInstance, CharacterPrivateInstance, EntityPosition, InventoryItem, ItemInstance, MapState, MobInstance, SkillInstance, StatusInstance};
+use proto_gen::{CharacterInstance, CharacterPrivateInstance, EntityPosition, InventoryItem, ItemInstance, MapState, MobInstance, SkillInstance, StatusInstance, entity_position};
 use proto_gen::{MapComponent, MapUpdateResponse};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -48,7 +48,7 @@ impl MapsUpdateService for MapsUpdateServiceImpl {
 
 pub struct MapsUpdateServiceImpl {
     character_service: Arc<dyn CharactersService + Send + Sync>,
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
 }
@@ -56,7 +56,7 @@ pub struct MapsUpdateServiceImpl {
 impl MapsUpdateServiceImpl {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
     ) -> Self {
@@ -70,7 +70,7 @@ impl MapsUpdateServiceImpl {
 
     fn start_update_loop(
         character_service: Arc<dyn CharactersService + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         maps_service: Arc<dyn MapsService + Send + Sync>,
@@ -209,7 +209,7 @@ impl MapsUpdateServiceImpl {
     }
 
     async fn spawn_mobs_tick(
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
         state: &GameStateRewindable,
         map: &GameMap,
         max_enemies: u32,
@@ -260,7 +260,7 @@ impl MapsUpdateServiceImpl {
     async fn merge_rewindable_inventory_into_real_inventory(
         current_state: &GameState,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
         characters_service: Arc<dyn CharactersService + Send + Sync>,
     ) {
         let mut unclaimed_drops: Vec<MapEntities> = Vec::new();
@@ -380,7 +380,7 @@ impl MapsUpdateServiceImpl {
 
     pub async fn game_state_to_update_response(
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
         map_definition_id: u64,
         game_state: &GameState,
     ) -> MapUpdateResponse {

@@ -1,4 +1,4 @@
-use crate::item_definitions::{INVENTORY_HIDDEN_ITEM_COMPONENT_LOOKUP, ItemDefinitionLookupServiceImpl};
+use crate::item_definitions::{INVENTORY_HIDDEN_ITEM_COMPONENT_LOOKUP, ItemDefinitionLookupService};
 use halfblind_itemdefinitions_service::ItemDefinitionsService;
 use halfblind_random::RandomService;
 use prost::Message;
@@ -11,7 +11,7 @@ use uuid::Uuid;
 pub fn generate_inventory_item_for_player_default(
     item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     player_uuid: Uuid,
     definition_id: u64,
     amount: u64,
@@ -27,7 +27,7 @@ pub fn generate_inventory_item_for_player_default(
 // It generates inventory items using the luck accumulated by
 // the character.
 pub fn generate_inventory_item_for_player(
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     definition_id: u64,
     amount: u64,
 ) -> InventoryItem {
@@ -88,7 +88,7 @@ pub fn generate_inventory_item_for_player(
 /// // uncollectable contains items that couldn't be added due to space/constraints
 /// ```
 pub fn try_aggregate_inventories(
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     source: &Vec<InventoryItem>,
     target: &mut Vec<InventoryItem>,
 ) -> Vec<InventoryItem> {
@@ -143,7 +143,7 @@ where
 /// Filters the inventory items to return only the visible items.
 /// Which are the Equipped inventory items plus character level
 pub fn filter_visible_inventory(
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     items: &[InventoryItem]
 ) -> Vec<&InventoryItem> {
     let mut result = filter_equipped_or_unequipped_items(items, true);
@@ -211,7 +211,7 @@ pub fn sum_inventory_item_attributes_by_definition(
 }
 
 pub fn could_collect_item(
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     item_definition_id: u64,
     character_inventory_items: &[InventoryItem],
 ) -> bool {

@@ -1,5 +1,5 @@
 use crate::inventory::inventory_item_utils::{generate_inventory_item_for_player, try_aggregate_inventories};
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use async_trait::async_trait;
 use halfblind_protobuf_network::ErrorCode;
 use halfblind_random::RandomService;
@@ -10,9 +10,18 @@ use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(Default)]
-pub struct TransactionServiceImpl{
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+pub struct TransactionServiceImpl {
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
+}
+
+impl TransactionServiceImpl {
+    pub fn new(
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
+    ) -> Self {
+        Self {
+            item_definition_lookup_service 
+        }
+    }
 }
 
 #[async_trait]
@@ -209,7 +218,7 @@ impl TransactionService<InventoryItem> for TransactionServiceImpl {
 }
 
 fn process_rewarded_items_immediate(
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
     inventory_items: &mut Vec<InventoryItem>,
     rewards: Vec<TransactionReward>,

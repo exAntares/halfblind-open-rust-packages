@@ -1,7 +1,7 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::models::Character;
 use crate::db::db::sqlx_error_to_proto_error;
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use crate::map::game_map::GameMap;
 use crate::map::maps_service::MapsService;
 use crate::map::models::{MapAction, MapActionTimed, MapEntities};
@@ -154,7 +154,7 @@ pub struct MapsServiceImpl {
     character_service: Arc<dyn CharactersService + Send + Sync>,
     inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
     item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     maps_update_service_impl: Arc<dyn MapsUpdateService + Send + Sync>,
     database_service: Arc<dyn DatabaseService + Send + Sync>,
 }
@@ -163,7 +163,7 @@ impl MapsServiceImpl {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
         item_definitions_service: Arc<dyn ItemDefinitionsService + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
         inventory_service: Arc<dyn InventoryService<InventoryItem> + Send + Sync>,
         maps_update_service_impl: Arc<dyn MapsUpdateService + Send + Sync>,
         database_service: Arc<dyn DatabaseService + Send + Sync>,

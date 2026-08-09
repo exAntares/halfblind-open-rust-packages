@@ -2,9 +2,9 @@ use crate::behaviour_trees::behaviour_tree_decoder::get_behavior_tree_node;
 use crate::behaviour_trees::behaviour_tree_map_context::BehaviourTreeMapContext;
 use crate::behaviour_trees::utils::move_to_positions;
 use crate::characters::characters_service::CharactersService;
-use crate::combat::combat_utils::{get_skill_damage, CharacterDamageModifier};
+use crate::combat::combat_utils::{CharacterDamageModifier, get_skill_damage};
 use crate::inventory::inventory_item_utils;
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use crate::map::game_map::GameMap;
 use crate::map::models::MapAction::MoveTo;
 use crate::map::models::MapEntities::{MobCharacter, PlayerCharacter, Skill};
@@ -25,7 +25,7 @@ pub struct GameStateRewindable {
     pub state_snapshots: VecDeque<GameSnapshot>, // You should also consider using a VecDeque if you are frequently removing old states from the front
 
     character_service: Arc<dyn CharactersService + Send + Sync>,
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
 
     max_lag_ms: u64,
@@ -36,7 +36,7 @@ pub struct GameStateRewindable {
 impl GameStateRewindable {
     pub fn new(
         character_service: Arc<dyn CharactersService + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         game_map: Arc<GameMap>,
         current_state: GameState,

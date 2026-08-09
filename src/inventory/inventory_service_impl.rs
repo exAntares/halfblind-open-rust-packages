@@ -1,5 +1,5 @@
 use crate::inventory::models::PlayerItem;
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use halfblind_database_service::DatabaseService;
@@ -117,7 +117,7 @@ impl InventoryService<InventoryItem> for InventoryServiceImpl {
 pub struct InventoryServiceImpl {
     database_service: Arc<dyn DatabaseService + Send + Sync>,
     random_service: Arc<dyn RandomService + Send + Sync>,
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     inventory_caches: DashMap<(Uuid, Uuid), Arc<RwLock<Vec<InventoryItem>>>>,
 }
 
@@ -125,7 +125,7 @@ impl InventoryServiceImpl {
     pub fn new(
         database_service: Arc<dyn DatabaseService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     ) -> Self {
         Self {
             database_service,

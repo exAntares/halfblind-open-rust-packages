@@ -4,7 +4,7 @@ use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
 use crate::inventory::inventory_item_utils;
 use crate::inventory::inventory_item_utils::try_aggregate_inventories;
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use crate::services::services::Services;
 use halfblind_network::*;
 use halfblind_protobuf_network::*;
@@ -112,7 +112,7 @@ struct TempInventoryItem {
 }
 
 pub async fn add_default_inventory_to_player(
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     player_uuid: Uuid,
     systems: Arc<Services>,
     player_inventory: &mut Vec<InventoryItem>,

@@ -1,7 +1,7 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::characters_service_impl::CharactersServiceImpl;
 use crate::inventory::inventory_service_impl::InventoryServiceImpl;
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::{ItemDefinitionLookupService, ItemDefinitionLookupServiceImpl};
 use crate::map::maps_service::MapsService;
 use crate::map::maps_service_impl::MapsServiceImpl;
 use crate::map_update::maps_update_service::MapsUpdateService;
@@ -30,7 +30,9 @@ pub fn create_arc_services() -> Arc<Services> {
     let pool = POOL.get().expect("Database POOL must be initialized before accessing services");
     println!("Creating Systems...");
     let item_definition_lookup_service = Arc::new(ItemDefinitionLookupServiceImpl::default());
-    let transaction_service = Arc::new(TransactionServiceImpl::default());
+    let transaction_service = Arc::new(TransactionServiceImpl::new(
+        item_definition_lookup_service.clone(),
+    ));
     let random_service = Arc::new(RandomServiceImpl::new(rand::random()));
     let items_definitions_impl = Arc::new(ItemDefinitionsServiceImpl::new(
         &ITEM_DEFINITIONS_RESPONSE_DEFAULT
@@ -77,7 +79,7 @@ pub struct Services {
     pub maps_update_service: Arc<dyn MapsUpdateService + Send + Sync>,
     pub random_service: Arc<dyn RandomService + Send + Sync>,
     pub transaction_service: Arc<dyn TransactionService<InventoryItem> + Send + Sync>,
-    pub item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    pub item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
 }
 
 impl Services {
@@ -89,7 +91,7 @@ impl Services {
         maps_update_service: Arc<dyn MapsUpdateService + Send + Sync>,
         random_service: Arc<dyn RandomService + Send + Sync>,
         transition_service: Arc<dyn TransactionService<InventoryItem> + Send + Sync>,
-        item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+        item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     ) -> Self {
         Self {
             maps_service: Arc::new(MapsServiceImpl::new(

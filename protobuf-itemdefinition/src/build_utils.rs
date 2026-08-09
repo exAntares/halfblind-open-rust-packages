@@ -49,11 +49,16 @@ r#"
 // Processing this component_types:
 // {:?}
 
+pub trait ItemDefinitionLookupService {{
+{}
+}}
+
 #[derive(Default, Debug)]
 pub struct ItemDefinitionLookupServiceImpl {{}}
-impl ItemDefinitionLookupServiceImpl {{
 
-"#, component_types));
+impl ItemDefinitionLookupService for ItemDefinitionLookupServiceImpl {{
+
+"#, component_types, generate_trait(component_types)));
     for component_type in component_types {
         let component_type_clean = component_type.split("::").last().unwrap();
         if is_singleton_component(component_type) {
@@ -67,6 +72,35 @@ impl ItemDefinitionLookupServiceImpl {{
         }
     }
     code.push_str("}\n");
+    code
+}
+
+fn generate_trait(
+    component_types: &HashSet<String>
+) -> String {
+    let mut code = String::new();
+    let singletons = component_types.iter().filter_map(|component_type| {
+        let component_type_clean = component_type.split("::").last().unwrap();
+        if is_singleton_component(component_type) {
+            Some(component_type_clean)
+        } else {
+            None
+        }
+    }).collect::<Vec<_>>();
+    for singleton in singletons.iter(){
+        let fn_definition = component_name_to_singleton_fn_trait(singleton);
+        code.push_str(fn_definition.as_str());
+    }
+    for component_type in component_types.iter() {
+        let component_type_clean = component_type.split("::").last().unwrap();
+        if is_singleton_component(component_type) {
+        } else {
+            let fn_definition = component_name_to_fn_trait(component_type_clean);
+            code.push_str(fn_definition.as_str());
+            let fn_definition_all = component_name_to_fn_trait_all(component_type_clean);
+            code.push_str(fn_definition_all.as_str());
+        }
+    }
     code
 }
 
@@ -135,11 +169,11 @@ fn component_name_to_singleton_fn_impl(component_type_name: &str) -> String {
     let mut code = String::new();
     code.push_str(&format!(
         r#"
-    pub fn {}(&self) -> std::sync::Arc<{}> {{
+    fn {}(&self) -> std::sync::Arc<{}> {{
         {}.clone()
     }}
 
-    pub fn {}_id(&self) -> u64 {{
+    fn {}_id(&self) -> u64 {{
         {}_ID
     }}
 "#,
@@ -150,23 +184,52 @@ fn component_name_to_singleton_fn_impl(component_type_name: &str) -> String {
     code
 }
 
+fn component_name_to_singleton_fn_trait(component_type_name: &str) -> String {
+    let component_name_no_component = component_type_name.replace("Component", "").to_string();
+    let lookup_name = to_snake_case_upper(component_name_no_component.as_str());
+    let function_name = to_snake_case_lower(component_name_no_component.as_str());
+    let mut code = String::new();
+    code.push_str(&format!(
+        r#"
+    fn {}(&self) -> std::sync::Arc<{}>;
+
+    fn {}_id(&self) -> u64;
+"#,
+        function_name, component_type_name,
+        function_name,
+    ));
+    code
+}
+
 fn component_name_to_fn_impl(component_name: &str) -> String {
     let lookup_name = to_snake_case_upper(&format!("{}Lookup",component_name));
     let mut code = String::new();
-    code.push_str(&format!("    pub fn {}(&self, id: &u64) -> Option<std::sync::Arc<{}>>", to_snake_case_lower(component_name), component_name));
+    code.push_str(&format!("    fn {}(&self, id: &u64) -> Option<std::sync::Arc<{}>>", to_snake_case_lower(component_name), component_name));
     code.push_str("{\n");
     code.push_str(&format!("        {}.get(id).cloned()\n", lookup_name));
     code.push_str("    }\n");
     code
 }
 
+fn component_name_to_fn_trait(component_name: &str) -> String {
+    let mut code = String::new();
+    code.push_str(&format!("    fn {}(&self, id: &u64) -> Option<std::sync::Arc<{}>>;\n", to_snake_case_lower(component_name), component_name));
+    code
+}
+
 fn component_name_to_fn_impl_all(component_name: &str) -> String {
     let lookup_name = to_snake_case_upper(&format!("{}Lookup",component_name));
     let mut code = String::new();
-    code.push_str(&format!("    pub fn {}_all(&self) -> Vec<(&u64, std::sync::Arc<{}>)>", to_snake_case_lower(component_name), component_name));
+    code.push_str(&format!("    fn {}_all(&self) -> Vec<(&u64, std::sync::Arc<{}>)>", to_snake_case_lower(component_name), component_name));
     code.push_str(" {\n");
     code.push_str(&format!("        {}.iter().map(|(k, v)| (k, Arc::clone(v))).collect()\n", lookup_name));
     code.push_str("    }\n");
+    code
+}
+
+fn component_name_to_fn_trait_all(component_name: &str) -> String {
+    let mut code = String::new();
+    code.push_str(&format!("    fn {}_all(&self) -> Vec<(&u64, std::sync::Arc<{}>)>;\n", to_snake_case_lower(component_name), component_name));
     code
 }
 

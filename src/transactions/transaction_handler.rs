@@ -1,7 +1,7 @@
 use crate::db::db::sqlx_error_to_proto_error;
 use crate::handlers::handler_registry::HandlerRegistration;
 use crate::handlers::handler_registry::RequestHandler;
-use crate::item_definitions::ItemDefinitionLookupServiceImpl;
+use crate::item_definitions::ItemDefinitionLookupService;
 use crate::services::services::Services;
 use crate::transactions::postgress_delayed_rewards_inserter::PostgresDelayedRewardsInserter;
 use halfblind_network::*;
@@ -74,7 +74,7 @@ async fn handle(
 }
 
 pub async fn get_transaction_definition(
-    item_definition_lookup_service: Arc<ItemDefinitionLookupServiceImpl>,
+    item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync>,
     transaction_id: u64,
 ) -> Result<Arc<TransactionComponent>, ItemsErrorCode> {
     let transaction_component = match item_definition_lookup_service.transaction_component(&transaction_id) {
