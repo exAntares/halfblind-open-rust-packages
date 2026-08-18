@@ -1,7 +1,7 @@
 use crate::characters::characters_service::CharactersService;
 use crate::characters::characters_service_impl::CharactersServiceImpl;
 use crate::inventory::inventory_service_impl::InventoryServiceImpl;
-use crate::item_definitions::{ItemDefinitionLookupService, ItemDefinitionLookupServiceImpl};
+use crate::item_definitions::{ItemDefinitionLookupDynamicImpl, ItemDefinitionLookupService, ItemDefinitionLookupServiceImpl};
 use crate::map::maps_service::MapsService;
 use crate::map::maps_service_impl::MapsServiceImpl;
 use crate::map_update::maps_update_service::MapsUpdateService;
@@ -29,7 +29,16 @@ pub static POOL: OnceLock<Arc<Pool<Postgres>>> = OnceLock::new();
 pub fn create_arc_services() -> Arc<Services> {
     let pool = POOL.get().expect("Database POOL must be initialized before accessing services");
     println!("Creating Systems...");
-    let item_definition_lookup_service = Arc::new(ItemDefinitionLookupServiceImpl::default());
+    let item_definition_lookup_service: Arc<dyn ItemDefinitionLookupService + Send + Sync> = match ItemDefinitionLookupDynamicImpl::new(&ITEM_DEFINITIONS_RESPONSE_DEFAULT) {
+        Ok(item_definition_lookup_dynamic_impl) => {
+            println!("Using dynamic item definitions lookup");
+            Arc::new(item_definition_lookup_dynamic_impl)
+        },
+        Err(e) => {
+            eprintln!("{:?}", e);
+            Arc::new(ItemDefinitionLookupServiceImpl::default())
+        }
+    };
     let transaction_service = Arc::new(TransactionServiceImpl::new(
         item_definition_lookup_service.clone(),
     ));

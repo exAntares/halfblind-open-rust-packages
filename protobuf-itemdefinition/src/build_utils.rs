@@ -42,6 +42,17 @@ fn get_all_proto_ending_with(proto_path: &str, ends_with: &str) -> HashSet<Strin
 }
 
 fn generate_item_definition_service_impl(component_types: &HashSet<String>) -> String {
+    let mut singleton_component_types = vec![];
+    let mut component_lookup_types = vec![];
+    component_types.iter().for_each(|component_type| {
+        let component_type_clean = component_type.split("::").last().unwrap();
+        if is_singleton_component(component_type) {
+            singleton_component_types.push(component_type_clean)
+        } else {
+            component_lookup_types.push(component_type_clean)
+        }
+    });
+
     let mut code = String::new();
     code.push_str(&format!(
 r#"
@@ -58,7 +69,8 @@ pub struct ItemDefinitionLookupServiceImpl {{}}
 
 impl ItemDefinitionLookupService for ItemDefinitionLookupServiceImpl {{
 
-"#, component_types, generate_trait(component_types)));
+"#, component_types, generate_trait(&singleton_component_types, &component_lookup_types)));
+
     for component_type in component_types {
         let component_type_clean = component_type.split("::").last().unwrap();
         if is_singleton_component(component_type) {
@@ -72,34 +84,170 @@ impl ItemDefinitionLookupService for ItemDefinitionLookupServiceImpl {{
         }
     }
     code.push_str("}\n");
+
+    code.push_str(&generate_item_definition_lookup_dynamic_impl(&singleton_component_types, &component_lookup_types));
+
     code
 }
 
-fn generate_trait(
-    component_types: &HashSet<String>
+fn generate_item_definition_lookup_dynamic_impl(
+    singleton_component_types: &Vec<&str>,
+    component_lookup_types: &Vec<&str>,
 ) -> String {
     let mut code = String::new();
-    let singletons = component_types.iter().filter_map(|component_type| {
-        let component_type_clean = component_type.split("::").last().unwrap();
-        if is_singleton_component(component_type) {
-            Some(component_type_clean)
-        } else {
-            None
-        }
-    }).collect::<Vec<_>>();
-    for singleton in singletons.iter(){
+    let members_impl = generate_lookup_dynamic_members(&singleton_component_types, &component_lookup_types);
+    let singleton_deconstructions = generate_lookup_dynamic_singleton_deconstructions(&singleton_component_types);
+    let constructor_fill = generate_lookup_dynamic_constructor_fill(&singleton_component_types, &component_lookup_types);
+    let singletons_fn_impl = generate_lookup_dynamic_singletons_fn_impl(&singleton_component_types);
+    let lookup_fn_impl = generate_lookup_dynamic_lookup_fn_impl(&component_lookup_types);
+    code.push_str(&format!(
+        r#"
+pub struct ItemDefinitionLookupDynamicImpl {{
+{members_impl}
+}}
+
+impl ItemDefinitionLookupDynamicImpl {{
+    pub fn new(
+        item_definitions: &ItemDefinitionsResponse,
+    ) -> Result<Self, ItemDefinitionLookupDynamicError> {{
+        let mut indexes_by_component_type_url: HashMap<String, Vec<(u64, &prost_types::Any)>> = Default::default();
+        item_definitions.definitions.iter().for_each(|item| {{
+            item.any_components.iter().for_each(|component| {{
+                let type_url = component.type_url.clone();
+                match indexes_by_component_type_url
+                    .get_mut(&type_url) {{
+                    None => {{
+                        indexes_by_component_type_url.insert(type_url, vec![(item.id, component)]);
+                    }},
+                    Some(vec) => vec.push((item.id, component)),
+                }}
+            }})}});
+
+        {singleton_deconstructions}
+
+        Ok(Self{{
+        {constructor_fill}
+        }})
+    }}
+}}
+
+impl ItemDefinitionLookupService for ItemDefinitionLookupDynamicImpl {{
+{singletons_fn_impl}
+{lookup_fn_impl}
+}}
+"#));
+    code
+}
+
+fn generate_lookup_dynamic_singletons_fn_impl(
+    singleton_component_types: &Vec<&str>,
+) -> String {
+    let mut code = String::new();
+    singleton_component_types.iter().for_each(|component_type_name| {
+        let member_name = as_member_name(component_type_name);
+        code.push_str(&format!(
+            r#"
+        fn {member_name}(&self) -> std::sync::Arc<{component_type_name}> {{ self.{member_name}.clone() }}
+        fn {member_name}_id(&self) -> u64 {{ self.{member_name}_id }}"#));
+    });
+    code
+}
+
+fn generate_lookup_dynamic_lookup_fn_impl(
+    component_lookup_types: &Vec<&str>,
+) -> String {
+    let mut code = String::new();
+    component_lookup_types.iter().for_each(|component_type_name| {
+        let member_name = as_member_name(component_type_name);
+        code.push_str(&format!(
+r#"
+        fn {member_name}_component(&self, id: &u64) ->Option<std::sync::Arc<{component_type_name}>>{{ self.{member_name}.get(id).cloned() }}
+        fn {member_name}_component_all(&self) -> Vec<(&u64, std::sync::Arc<{component_type_name}>)> {{ self.{member_name}.iter().map(|(k, v)| (k, std::sync::Arc::clone(v))).collect() }}"#
+        ));
+    });
+    code
+}
+
+fn generate_lookup_dynamic_singleton_deconstructions(
+    singleton_component_types: &Vec<&str>,
+) -> String {
+    let mut code = String::new();
+    singleton_component_types.iter().for_each(|component_type_name| {
+        let member_name = as_member_name(component_type_name);
+        code.push_str(&format!(
+r#"
+        let ({member_name}_id, {member_name}) = get_singleton_component::<{component_type_name}>(&indexes_by_component_type_url)?;"#));
+    });
+    code
+}
+
+fn generate_lookup_dynamic_constructor_fill(
+    singleton_component_types: &Vec<&str>,
+    component_lookup_types: &Vec<&str>,
+) -> String {
+    let mut code = String::new();
+    singleton_component_types.iter().for_each(|component_type_name| {
+        let member_name = as_member_name(component_type_name);
+        code.push_str(&format!(
+r#"
+            {member_name},
+            {member_name}_id,"#));
+    });
+    component_lookup_types.iter().for_each(|component_type_name| {
+        let member_name = as_member_name(component_type_name);
+        code.push_str(&format!(
+r#"
+            {member_name}: get_hash_map::<{component_type_name}>(&indexes_by_component_type_url),"#
+        ));
+    });
+    code
+}
+
+fn generate_lookup_dynamic_members(
+    singleton_component_types: &Vec<&str>,
+    component_lookup_types: &Vec<&str>,
+) -> String {
+    let mut code = String::new();
+    singleton_component_types.iter().for_each(|component_type_name| {
+        let member_name = as_member_name(component_type_name);
+        code.push_str(&format!(
+r#"
+    {member_name}: std::sync::Arc<{component_type_name}>,
+    {member_name}_id: u64,"#));
+    });
+    component_lookup_types.iter().for_each(|component_type_name|{
+        let member_name = as_member_name(component_type_name);
+       code.push_str(&format!(
+r#"
+    {member_name}: std::collections::HashMap<u64, std::sync::Arc<{component_type_name}>>,"#));
+    });
+
+    code
+}
+
+fn as_member_name(
+    component_type_name: &str,
+) -> String {
+    let component_name_no_component = component_type_name.replace("Component", "").to_string();
+    let member_name = to_snake_case_lower(component_name_no_component.as_str());
+    member_name
+}
+
+fn generate_trait(
+    singleton_component_types: &Vec<&str>,
+    component_type_lookups: &Vec<&str>
+) -> String {
+    let mut code = String::new();
+    for singleton in singleton_component_types.iter(){
         let fn_definition = component_name_to_singleton_fn_trait(singleton);
         code.push_str(fn_definition.as_str());
     }
-    for component_type in component_types.iter() {
+    for component_type in component_type_lookups.iter() {
         let component_type_clean = component_type.split("::").last().unwrap();
-        if is_singleton_component(component_type) {
-        } else {
-            let fn_definition = component_name_to_fn_trait(component_type_clean);
-            code.push_str(fn_definition.as_str());
-            let fn_definition_all = component_name_to_fn_trait_all(component_type_clean);
-            code.push_str(fn_definition_all.as_str());
-        }
+        let fn_definition = component_name_to_fn_trait(component_type_clean);
+        code.push_str(fn_definition.as_str());
+        let fn_definition_all = component_name_to_fn_trait_all(component_type_clean);
+        code.push_str(fn_definition_all.as_str());
     }
     code
 }
