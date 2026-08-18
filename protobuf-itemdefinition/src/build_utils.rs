@@ -338,8 +338,10 @@ fn component_name_to_singleton_fn_trait(component_type_name: &str) -> String {
     let mut code = String::new();
     code.push_str(&format!(
         r#"
+    #[allow(dead_code)]
     fn {}(&self) -> std::sync::Arc<{}>;
 
+    #[allow(dead_code)]
     fn {}_id(&self) -> u64;
 "#,
         function_name, component_type_name,
@@ -360,7 +362,7 @@ fn component_name_to_fn_impl(component_name: &str) -> String {
 
 fn component_name_to_fn_trait(component_name: &str) -> String {
     let mut code = String::new();
-    code.push_str(&format!("    fn {}(&self, id: &u64) -> Option<std::sync::Arc<{}>>;\n", to_snake_case_lower(component_name), component_name));
+    code.push_str(&format!("    #[allow(dead_code)]\n    fn {}(&self, id: &u64) -> Option<std::sync::Arc<{}>>;\n", to_snake_case_lower(component_name), component_name));
     code
 }
 
@@ -376,7 +378,7 @@ fn component_name_to_fn_impl_all(component_name: &str) -> String {
 
 fn component_name_to_fn_trait_all(component_name: &str) -> String {
     let mut code = String::new();
-    code.push_str(&format!("    fn {}_all(&self) -> Vec<(&u64, std::sync::Arc<{}>)>;\n", to_snake_case_lower(component_name), component_name));
+    code.push_str(&format!("    #[allow(dead_code)]\n    fn {}_all(&self) -> Vec<(&u64, std::sync::Arc<{}>)>;\n", to_snake_case_lower(component_name), component_name));
     code
 }
 
