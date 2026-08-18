@@ -334,7 +334,6 @@ fn component_name_to_singleton_fn_impl(component_type_name: &str) -> String {
 
 fn component_name_to_singleton_fn_trait(component_type_name: &str) -> String {
     let component_name_no_component = component_type_name.replace("Component", "").to_string();
-    let lookup_name = to_snake_case_upper(component_name_no_component.as_str());
     let function_name = to_snake_case_lower(component_name_no_component.as_str());
     let mut code = String::new();
     code.push_str(&format!(
@@ -403,7 +402,7 @@ fn generate_component_lookup(
     if is_singleton_component(&static_name) {
         let singleton_variable_name = to_snake_case_upper(static_name.replace("ComponentLookup", "").as_str());
         let singleton_id = indexes.iter().map(|(_, _, id)| *id).min().unwrap_or_default();
-        let singleton_impl = indexes.iter().map(|(definition_index, component_index, definition_id)| {
+        let singleton_impl = indexes.iter().map(|(definition_index, component_index, _)| {
             format!(
                 r#"
     let component = &ITEM_DEFINITIONS_RESPONSE_DEFAULT.definitions[{}].any_components[{}];
@@ -416,10 +415,12 @@ fn generate_component_lookup(
             )}).collect::<Vec<_>>();
         code.push_str(&format!(
             r#"
+#[allow(dead_code)]
 pub static {}: LazyLock<Arc<{}>> = LazyLock::new(|| {{
 {}
 }});
 
+#[allow(dead_code)]
 pub const {}_ID: u64 = {};
 "#,
             singleton_variable_name,
@@ -431,10 +432,14 @@ pub const {}_ID: u64 = {};
         return code;
     }
     code.push_str(&format!(
-        "pub static {}: LazyLock<HashMap<u64, Arc<{}>>> = LazyLock::new(|| {{\n",
+        "#[allow(dead_code)]\npub static {}: LazyLock<HashMap<u64, Arc<{}>>> = LazyLock::new(|| {{\n",
         to_snake_case_upper(static_name.as_str()), component_type_clean
     ));
-    code.push_str("    let mut map = HashMap::new();\n");
+    let mutability = match indexes.is_empty() {
+        true => "",
+        false => "mut",
+    };
+    code.push_str(&format!("    let {mutability} map = HashMap::new();\n"));
     for (definition_index, component_index, definition_id) in indexes.iter() {
         code.push_str(&format!(
             r#"
