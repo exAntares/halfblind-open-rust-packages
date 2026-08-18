@@ -32,11 +32,13 @@ namespace BalancingEditor {
 
         public static void ImportItemDefinitions(string directoryPath, string assetPath, string json) {
             var allProtobufTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(x => !x.FullName.StartsWith("Unity"))
                 .SelectMany(x => x.GetTypes())
                 .Where(x => typeof(IMessage).IsAssignableFrom(x) && !x.IsAbstract)
                 .ToDictionary(x => x.Name, x => x);
             
             var allSerializableTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(x => !x.FullName.StartsWith("Unity"))
                 .SelectMany(x => x.GetTypes())
                 .Where(x => typeof(ISerializedIMessage).IsAssignableFrom(x))
                 .ToDictionary(x => x.FullName, x => x);
